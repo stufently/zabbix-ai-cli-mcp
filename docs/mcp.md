@@ -1,7 +1,7 @@
 # MCP server
 
 ```bash
-zabbix-ai-cli mcp --profile prod
+zabbix-ai-cli-mcp mcp --profile prod
 ```
 
 Speaks the Model Context Protocol over stdio. The Zabbix token is resolved inside
@@ -10,15 +10,15 @@ this process from the profile; an MCP client never sees it.
 ## Claude Code
 
 ```bash
-claude mcp add zabbix -- zabbix-ai-cli mcp --profile prod
+claude mcp add zabbix -- zabbix-ai-cli-mcp mcp --profile prod
 ```
 
 Several installations, several servers, no credentials in any client
 configuration:
 
 ```bash
-claude mcp add zabbix-prod  -- zabbix-ai-cli mcp --profile prod
-claude mcp add zabbix-stage -- zabbix-ai-cli mcp --profile staging
+claude mcp add zabbix-prod  -- zabbix-ai-cli-mcp mcp --profile prod
+claude mcp add zabbix-stage -- zabbix-ai-cli-mcp mcp --profile staging
 ```
 
 ## Codex
@@ -26,7 +26,7 @@ claude mcp add zabbix-stage -- zabbix-ai-cli mcp --profile staging
 ```toml
 # ~/.codex/config.toml
 [mcp_servers.zabbix]
-command = "zabbix-ai-cli"
+command = "zabbix-ai-cli-mcp"
 args = ["mcp", "--profile", "prod"]
 ```
 
@@ -72,7 +72,7 @@ a person runs:
     "plan_id": "pl_cc89d2e87d15",
     "summary": "Create maintenance \"ms* (2h0m)\" for 2h0m",
     "impact_count": 14,
-    "approve_command": "zabbix-ai-cli approve pl_cc89d2e87d15",
+    "approve_command": "zabbix-ai-cli-mcp approve pl_cc89d2e87d15",
     "expires_at": "2026-08-21T05:54:22Z"
   }
 }
@@ -94,11 +94,13 @@ read at all.
 Where a long-lived shared endpoint is genuinely wanted:
 
 ```bash
-zabbix-ai-cli mcp --profile prod --http 127.0.0.1:8000 --bearer-token "$MCP_TOKEN"
+zabbix-ai-cli-mcp mcp --profile prod --http 127.0.0.1:8000 --bearer-token "$MCP_TOKEN"
 ```
 
 - Binds loopback; a routable address needs `--allow-remote` **and** a bearer token.
 - The bearer token authenticates MCP clients and is unrelated to the Zabbix token.
+- `ZABBIX_AI_CLI_MCP_BEARER_TOKEN` supplies that bearer token without exposing it in
+  the process list; `ZABBIX_AI_CLI_MCP_TOKEN` is the separate Zabbix API token.
 - Compared in constant time.
 - Wrapped in cross-origin protection, which the SDK does not apply by default.
 - Explicit server timeouts and a 4 MiB body limit.
@@ -107,12 +109,12 @@ zabbix-ai-cli mcp --profile prod --http 127.0.0.1:8000 --bearer-token "$MCP_TOKE
 
 ```bash
 docker run --rm -i \
-  -e ZABBIX_AI_CLI_URL=https://zabbix.example.com \
-  -e ZABBIX_AI_CLI_TOKEN_FILE=/run/secrets/zabbix \
+  -e ZABBIX_AI_CLI_MCP_URL=https://zabbix.example.com \
+  -e ZABBIX_AI_CLI_MCP_TOKEN_FILE=/run/secrets/zabbix \
   -v /run/secrets/zabbix:/run/secrets/zabbix:ro \
-  ghcr.io/stufently/zabbix-ai-cli mcp
+  ghcr.io/stufently/zabbix-ai-cli-mcp mcp
 ```
 
 The image runs as a non-root user with a read-only root filesystem. For plans and
 the audit log to survive, mount a writable state directory and point
-`ZABBIX_AI_CLI_STATE_DIR` at it.
+`ZABBIX_AI_CLI_MCP_STATE_DIR` at it.

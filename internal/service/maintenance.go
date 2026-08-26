@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 )
 
 // Zabbix bounds a maintenance period to between five minutes and roughly a
@@ -301,7 +301,7 @@ func (s *Service) expandHostPatterns(ctx context.Context, patterns []string) ([]
 		}
 		if len(hosts) == 0 {
 			return nil, errs.NotFound("no host matches %q", p).
-				WithSuggestion("patterns are substrings and may use *; check with 'zabbix-ai-cli host list --search %s'", p)
+				WithSuggestion("patterns are substrings and may use *; check with 'zabbix-ai-cli-mcp host list --search %s'", p)
 		}
 		for _, h := range hosts {
 			if !seen[h.ID] {
@@ -403,7 +403,7 @@ func (s *Service) PlanMaintenanceExpire(ctx context.Context, profile, id string)
 		// earliest legal moment would leave a shorter window still scheduled,
 		// which looks like a cancellation and is not one.
 		return nil, errs.Usage("maintenance %q has not started yet; it begins at %s", m.Name, m.ActiveSince).
-			WithSuggestion("use 'zabbix-ai-cli maintenance delete %s' to cancel it", id)
+			WithSuggestion("use 'zabbix-ai-cli-mcp maintenance delete %s' to cancel it", id)
 	}
 	// The window must keep a legal period, so it ends at the earliest moment
 	// Zabbix will accept rather than exactly now.

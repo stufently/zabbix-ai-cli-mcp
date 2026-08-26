@@ -11,7 +11,7 @@ labels: bug
 **How to reproduce**
 
 ```
-zabbix-ai-cli ... --json
+zabbix-ai-cli-mcp ... --json
 ```
 
 **Output**
@@ -22,6 +22,6 @@ security issue; see SECURITY.md rather than filing here.
 
 **Versions**
 
-- `zabbix-ai-cli version`:
-- Zabbix server version (`zabbix-ai-cli auth status` reports it):
+- `zabbix-ai-cli-mcp version`:
+- Zabbix server version (`zabbix-ai-cli-mcp auth status` reports it):
 - Operating system:

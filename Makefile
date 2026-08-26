@@ -3,17 +3,17 @@
 # stable Go release. Use the Go toolchain directly for a host-native binary.
 GO_IMAGE   ?= golang:1.27.0
 GOLANGCI_LINT_VERSION ?= v2.13.1
-BINARY     := zabbix-ai-cli
-PKG        := ./cmd/zabbix-ai-cli
+BINARY     := zabbix-ai-cli-mcp
+PKG        := ./cmd/zabbix-ai-cli-mcp
 VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS    := -s -w -X github.com/stufently/zabbix-ai-cli/internal/cli.Version=$(VERSION)
+LDFLAGS    := -s -w -X github.com/stufently/zabbix-ai-cli-mcp/internal/cli.Version=$(VERSION)
 UID        := $(shell id -u)
 GID        := $(shell id -g)
 # The cache lives outside the working tree: it is bind-mounted into /src, so a
 # cache inside the repository puts a downloaded Go toolchain's sources under
 # "gofmt -l ." — which fails fmt-check on files that are not ours, and which
 # "make fmt" would happily rewrite.
-CACHE      ?= $(HOME)/.cache/zabbix-ai-cli
+CACHE      ?= $(HOME)/.cache/zabbix-ai-cli-mcp
 
 # Containers write into bind mounts as the invoking user, so build artefacts and
 # caches stay owned by the person who ran make rather than by root.
@@ -74,7 +74,7 @@ docker:
 ## install: build and install the Linux binary into ~/bin (Linux hosts only)
 install:
 	@if [ "$(shell uname -s)" != "Linux" ]; then \
-		echo "make install produces a Linux binary; use 'go install ./cmd/zabbix-ai-cli' for a host-native install"; \
+		echo "make install produces a Linux binary; use 'go install ./cmd/zabbix-ai-cli-mcp' for a host-native install"; \
 		exit 1; \
 	fi
 	$(MAKE) build

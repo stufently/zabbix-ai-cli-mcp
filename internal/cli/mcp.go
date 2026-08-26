@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/stufently/zabbix-ai-cli/internal/mcp"
-	"github.com/stufently/zabbix-ai-cli/internal/opspec"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/mcp"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
 )
 
 func mcpCommand(g *globals) *cobra.Command {
@@ -22,7 +22,7 @@ func mcpCommand(g *globals) *cobra.Command {
 		Long: "Exposes the same operations the CLI runs as MCP tools, over stdio by default.\n\n" +
 			"The Zabbix token stays inside this process; an MCP client never sees it. No tool can " +
 			"change Zabbix: a write request produces a plan that a person approves with " +
-			"'zabbix-ai-cli approve'.",
+			"'zabbix-ai-cli-mcp approve'.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// The environment is rebuilt per call so a long-lived server picks
 			// up a rotated token without being restarted.
@@ -46,7 +46,7 @@ func mcpCommand(g *globals) *cobra.Command {
 			// A flag value is visible to every process on the machine through
 			// the process list, and lands in shell history besides. The
 			// environment is the safer place for a shared secret, so it wins.
-			if env := os.Getenv("ZABBIX_AI_CLI_MCP_TOKEN"); env != "" {
+			if env := os.Getenv("ZABBIX_AI_CLI_MCP_BEARER_TOKEN"); env != "" {
 				bearer = env
 			}
 			return mcp.ServeHTTP(cmd.Context(), server, mcp.HTTPOptions{
@@ -60,7 +60,7 @@ func mcpCommand(g *globals) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&httpAddr, "http", "", "serve streamable HTTP on this address instead of stdio")
 	cmd.Flags().StringVar(&bearer, "bearer-token", "",
-		"require this bearer token from MCP clients; prefer ZABBIX_AI_CLI_MCP_TOKEN, which is not visible in the process list")
+		"require this bearer token from MCP clients; prefer ZABBIX_AI_CLI_MCP_BEARER_TOKEN, which is not visible in the process list")
 	cmd.Flags().BoolVar(&readOnly, "read-only", false,
 		"withhold the planning tool, so a client cannot even describe a change")
 	cmd.Flags().BoolVar(&allowRemote, "allow-remote", false,

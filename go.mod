@@ -1,4 +1,4 @@
-module github.com/stufently/zabbix-ai-cli
+module github.com/stufently/zabbix-ai-cli-mcp
 
 go 1.25.0
 

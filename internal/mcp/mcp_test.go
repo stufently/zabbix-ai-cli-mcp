@@ -10,13 +10,13 @@ import (
 	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/stufently/zabbix-ai-cli/internal/api"
-	"github.com/stufently/zabbix-ai-cli/internal/config"
-	zmcp "github.com/stufently/zabbix-ai-cli/internal/mcp"
-	"github.com/stufently/zabbix-ai-cli/internal/opspec"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
-	"github.com/stufently/zabbix-ai-cli/internal/service"
-	"github.com/stufently/zabbix-ai-cli/internal/zbxtest"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
+	zmcp "github.com/stufently/zabbix-ai-cli-mcp/internal/mcp"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/zbxtest"
 )
 
 const testToken = "mcp-secret-token"
@@ -206,7 +206,7 @@ func TestPlanToolDescribesButDoesNotApply(t *testing.T) {
 		t.Errorf("status = %v", data["status"])
 	}
 	approve, _ := data["approve_command"].(string)
-	if !strings.HasPrefix(approve, "zabbix-ai-cli approve pl_") {
+	if !strings.HasPrefix(approve, "zabbix-ai-cli-mcp approve pl_") {
 		t.Errorf("approve command = %q", approve)
 	}
 	if calls := h.server.CallsTo("maintenance.create"); len(calls) != 0 {

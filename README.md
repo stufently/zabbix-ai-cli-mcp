@@ -1,12 +1,12 @@
-# Zabbix AI CLI — Zabbix MCP server and CLI for AI agents
+# Zabbix AI CLI MCP — Zabbix MCP server and CLI for AI agents
 
-[![CI](https://github.com/stufently/zabbix-ai-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/stufently/zabbix-ai-cli/actions/workflows/ci.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/stufently/zabbix-ai-cli.svg)](https://pkg.go.dev/github.com/stufently/zabbix-ai-cli)
+[![CI](https://github.com/stufently/zabbix-ai-cli-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/stufently/zabbix-ai-cli-mcp/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/stufently/zabbix-ai-cli-mcp.svg)](https://pkg.go.dev/github.com/stufently/zabbix-ai-cli-mcp)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Zabbix](https://img.shields.io/badge/Zabbix-6.4%2B-red.svg)](#compatibility)
 [![MCP](https://img.shields.io/badge/MCP-stdio%20%7C%20streamable%20HTTP-green.svg)](docs/mcp.md)
 
-**`zabbix-ai-cli` is a Zabbix MCP server and command-line client in one Go
+**`zabbix-ai-cli-mcp` is a Zabbix MCP server and command-line client in one Go
 binary.** It gives Claude Code, Claude Desktop, Codex, Cursor and any other
 Model Context Protocol client task-shaped access to Zabbix — what is broken
 right now, why a host is silent, why an alert never arrived — with bounded
@@ -24,11 +24,11 @@ It never contacts a language model. The AI decides, this program executes,
 Zabbix monitors.
 
 ```bash
-zabbix-ai-cli login
-zabbix-ai-cli problems list
-zabbix-ai-cli host investigate server01
-zabbix-ai-cli alert why 757474
-zabbix-ai-cli mcp
+zabbix-ai-cli-mcp login
+zabbix-ai-cli-mcp problems list
+zabbix-ai-cli-mcp host investigate server01
+zabbix-ai-cli-mcp alert why 757474
+zabbix-ai-cli-mcp mcp
 ```
 
 ## Why not another Zabbix API wrapper
@@ -77,7 +77,7 @@ a confirmation an agent can send is a confirmation prompt injection can send.
 The approval lives at a terminal, outside the model's context.
 
 ```
-$ zabbix-ai-cli maintenance create "ms*" --for 2h
+$ zabbix-ai-cli-mcp maintenance create "ms*" --for 2h
 
 PLAN pl_cc89d2e87d15
 
@@ -92,7 +92,7 @@ Risk: write
 Expires: 2026-08-21T05:54:22Z
 
 Nothing has changed yet.
-To apply it: zabbix-ai-cli approve pl_cc89d2e87d15
+To apply it: zabbix-ai-cli-mcp approve pl_cc89d2e87d15
 ```
 
 Before a plan runs, its parameters are re-hashed, its deadline checked and its
@@ -113,11 +113,11 @@ beats a refusal that gets routed around.
 For a host-native binary, use Go 1.25 or newer:
 
 ```bash
-go install github.com/stufently/zabbix-ai-cli/cmd/zabbix-ai-cli@latest
+go install github.com/stufently/zabbix-ai-cli-mcp/cmd/zabbix-ai-cli-mcp@latest
 
 # Or build the current checkout.
 mkdir -p bin
-go build -trimpath -o bin/zabbix-ai-cli ./cmd/zabbix-ai-cli
+go build -trimpath -o bin/zabbix-ai-cli-mcp ./cmd/zabbix-ai-cli-mcp
 ```
 
 The Make targets are container-first and do not require Go on the host:
@@ -130,7 +130,7 @@ make docker     # Linux container image for the MCP server
 ## Configure
 
 ```bash
-zabbix-ai-cli login --profile prod
+zabbix-ai-cli-mcp login --profile prod
 ```
 
 It asks for the URL and the API token, verifies the token against the server, and
@@ -138,13 +138,13 @@ stores it. The token is never accepted as a flag, because flag values are visibl
 in shell history and in the process list; pipe it in instead:
 
 ```bash
-printf %s "$TOKEN" | zabbix-ai-cli login --profile prod --url https://zabbix.example.com --token-stdin
+printf %s "$TOKEN" | zabbix-ai-cli-mcp login --profile prod --url https://zabbix.example.com --token-stdin
 ```
 
 Writes are off until a profile is granted the scope for them:
 
 ```bash
-zabbix-ai-cli profile scopes prod --add maintenance
+zabbix-ai-cli-mcp profile scopes prod --add maintenance
 ```
 
 See [docs/authentication.md](docs/authentication.md) for the resolution order and
@@ -159,8 +159,8 @@ model's context or a client's configuration file.
 ### Claude Code
 
 ```bash
-claude mcp add zabbix -- zabbix-ai-cli mcp --profile prod
-zabbix-ai-cli skills install claude
+claude mcp add zabbix -- zabbix-ai-cli-mcp mcp --profile prod
+zabbix-ai-cli-mcp skills install claude
 ```
 
 ### Claude Desktop
@@ -171,7 +171,7 @@ zabbix-ai-cli skills install claude
 {
   "mcpServers": {
     "zabbix": {
-      "command": "zabbix-ai-cli",
+      "command": "zabbix-ai-cli-mcp",
       "args": ["mcp", "--profile", "prod"]
     }
   }
@@ -183,22 +183,22 @@ zabbix-ai-cli skills install claude
 ```toml
 # ~/.codex/config.toml
 [mcp_servers.zabbix]
-command = "zabbix-ai-cli"
+command = "zabbix-ai-cli-mcp"
 args = ["mcp", "--profile", "prod"]
 ```
 
 ```bash
-zabbix-ai-cli skills install codex
+zabbix-ai-cli-mcp skills install codex
 ```
 
 ### Cursor, Windsurf, VS Code and other MCP clients
 
 Any client that speaks stdio takes the same two fields — command
-`zabbix-ai-cli`, arguments `["mcp", "--profile", "prod"]`. For a client that
+`zabbix-ai-cli-mcp`, arguments `["mcp", "--profile", "prod"]`. For a client that
 wants HTTP instead:
 
 ```bash
-zabbix-ai-cli mcp --http 127.0.0.1:8000
+zabbix-ai-cli-mcp mcp --http 127.0.0.1:8000
 ```
 
 It refuses a routable address unless you pass `--allow-remote` together with a
@@ -209,10 +209,10 @@ route into Zabbix. See [docs/mcp.md](docs/mcp.md).
 
 ```bash
 docker run --rm -i \
-  -e ZABBIX_AI_CLI_URL=https://zabbix.example.com \
-  -e ZABBIX_AI_CLI_TOKEN_FILE=/run/secrets/zabbix \
+  -e ZABBIX_AI_CLI_MCP_URL=https://zabbix.example.com \
+  -e ZABBIX_AI_CLI_MCP_TOKEN_FILE=/run/secrets/zabbix \
   -v /path/to/token:/run/secrets/zabbix:ro \
-  ghcr.io/stufently/zabbix-ai-cli:latest mcp
+  ghcr.io/stufently/zabbix-ai-cli-mcp:latest mcp
 ```
 
 ## MCP tools
@@ -259,12 +259,12 @@ Errors carry a stable code, whether retrying is worthwhile, and what to do next:
     "code": "AUTHENTICATION_FAILED",
     "message": "Zabbix rejected the configured API token",
     "retryable": false,
-    "suggestion": "run 'zabbix-ai-cli login' to configure a new token"
+    "suggestion": "run 'zabbix-ai-cli-mcp login' to configure a new token"
   }
 }
 ```
 
-`zabbix-ai-cli schema` prints every operation, its parameters and its JSON Schema,
+`zabbix-ai-cli-mcp schema` prints every operation, its parameters and its JSON Schema,
 so an agent can learn the tool programmatically instead of guessing at flags.
 
 Full details in [docs/json-output.md](docs/json-output.md).
@@ -292,7 +292,7 @@ tools, instead of the model guessing at `curl` calls against the JSON-RPC API.
 
 Not on its own. Read operations run immediately. Every write produces a plan and
 stops. Applying that plan is a command a person runs in their own terminal:
-`zabbix-ai-cli approve <plan-id>`. There is no MCP parameter that applies
+`zabbix-ai-cli-mcp approve <plan-id>`. There is no MCP parameter that applies
 anything, and a test fails the build if one is ever added.
 
 ### Does it send my monitoring data to an AI provider?

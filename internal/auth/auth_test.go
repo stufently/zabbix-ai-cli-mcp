@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stufently/zabbix-ai-cli/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
 )
 
 func withConfigDir(t *testing.T) string {

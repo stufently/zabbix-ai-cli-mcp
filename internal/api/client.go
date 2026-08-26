@@ -63,7 +63,7 @@ func New(baseURL, token string, opts ...Option) *Client {
 	c := &Client{
 		endpoint:         normaliseEndpoint(baseURL),
 		token:            token,
-		userAgent:        "zabbix-ai-cli",
+		userAgent:        "zabbix-ai-cli-mcp",
 		http:             &http.Client{Timeout: 30 * time.Second},
 		maxResponseBytes: DefaultMaxResponseBytes,
 		maxRetries:       2,

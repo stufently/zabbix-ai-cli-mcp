@@ -12,20 +12,20 @@ nothing wrong. These commands tell the two apart.
 
 1. **Across the installation**:
    ```bash
-   zabbix-ai-cli unreachable --json
+   zabbix-ai-cli-mcp unreachable --json
    ```
    Lists monitored hosts with an unavailable interface, with the error text Zabbix
    recorded and whether the host is in maintenance.
 
 2. **For one host**:
    ```bash
-   zabbix-ai-cli host investigate web01 --json
+   zabbix-ai-cli-mcp host investigate web01 --json
    ```
    Read `no_data_items` and `unsupported_items` together with `status.agent_available`.
 
 3. **For specific checks**:
    ```bash
-   zabbix-ai-cli metrics latest web01 --search disk --json
+   zabbix-ai-cli-mcp metrics latest web01 --search disk --json
    ```
    Each value carries `no_data`, `stale` and `age`.
 

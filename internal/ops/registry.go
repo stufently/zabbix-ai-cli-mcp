@@ -1,4 +1,4 @@
-// Package ops is the registry of everything zabbix-ai-cli can do.
+// Package ops is the registry of everything zabbix-ai-cli-mcp can do.
 //
 // Each operation appears exactly once. The CLI builds commands from this list,
 // the MCP server builds tools from it, and `schema` prints it, so a change to
@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/opspec"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 )
 
 var registry []*opspec.Operation
@@ -114,5 +114,5 @@ func requireScope(env *opspec.Env, scope, what string) error {
 	}
 	return errs.New(errs.CodeScope, errs.ExitPermission,
 		"profile %q does not grant the %q scope, which %s requires", env.Profile, scope, what).
-		WithSuggestion("add it with 'zabbix-ai-cli profile scopes %s --add %s'", env.Profile, scope)
+		WithSuggestion("add it with 'zabbix-ai-cli-mcp profile scopes %s --add %s'", env.Profile, scope)
 }

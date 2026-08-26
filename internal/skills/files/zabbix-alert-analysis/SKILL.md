@@ -13,7 +13,7 @@ error anywhere. Do not reconstruct the chain by hand.
 1. **Get the event identifier.** If you have the notification text — pasted from
    chat, email, or a ticket — hand it over whole:
    ```bash
-   zabbix-ai-cli resolve "Problem started at 08:17 ... Host: web01 ... Original problem ID: 757474" --json
+   zabbix-ai-cli-mcp resolve "Problem started at 08:17 ... Host: web01 ... Original problem ID: 757474" --json
    ```
    It extracts the event, host and trigger. Without this step an instruction like
    "why didn't this one alert?" cannot be acted on, because the identifiers exist
@@ -21,7 +21,7 @@ error anywhere. Do not reconstruct the chain by hand.
 
 2. **Explain the delivery**:
    ```bash
-   zabbix-ai-cli alert why 757474 --json
+   zabbix-ai-cli-mcp alert why 757474 --json
    ```
 
 3. **Read `findings` first.** They are ordered facts, not conclusions. The supporting

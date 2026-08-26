@@ -5,13 +5,13 @@ a change merged is to understand two constraints before writing code.
 
 ## The two rules that shape everything
 
-**One operation registry.** The CLI, the MCP tools and `zabbix-ai-cli schema`
+**One operation registry.** The CLI, the MCP tools and `zabbix-ai-cli-mcp schema`
 are all generated from `internal/opspec` + `internal/ops`. A new capability is a
 registry entry, not three parallel implementations. If you find yourself editing
 a cobra command and an MCP tool to say the same thing, stop — that is the bug.
 
 **No MCP tool may apply a change.** Writes produce a plan; a person applies it
-from a terminal with `zabbix-ai-cli approve <plan-id>`. Never add an `apply`,
+from a terminal with `zabbix-ai-cli-mcp approve <plan-id>`. Never add an `apply`,
 `confirm` or `force` parameter to an MCP tool. A test in `internal/mcp` fails the
 build if one appears, and that test is not the obstacle — it is the design.
 

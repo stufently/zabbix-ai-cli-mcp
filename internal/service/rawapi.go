@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 )
 
 // RawResult carries the escape hatch's answer plus what the registry decided
@@ -30,7 +30,7 @@ func (s *Service) RawRead(ctx context.Context, method string, params any) (*RawR
 	}
 	if class.Risk != safety.RiskRead {
 		return nil, errs.Denied("%s is a %s method and cannot run as a read", method, class.Risk).
-			WithSuggestion("plan it instead: 'zabbix-ai-cli api call %s --params ... --apply'", method)
+			WithSuggestion("plan it instead: 'zabbix-ai-cli-mcp api call %s --params ... --apply'", method)
 	}
 	var raw json.RawMessage
 	if err := s.client.CallIdempotent(ctx, method, params, &raw); err != nil {
@@ -72,7 +72,7 @@ func (s *Service) PlanRawCall(ctx context.Context, profile, method string, param
 func DeniedMethodError(method string, class safety.Classification) error {
 	e := errs.Denied("the method %q is refused: %s", method, class.Reason)
 	if strings.Contains(class.Reason, "risk registry") {
-		return e.WithSuggestion("run 'zabbix-ai-cli schema api-methods' to list the methods this tool will call")
+		return e.WithSuggestion("run 'zabbix-ai-cli-mcp schema api-methods' to list the methods this tool will call")
 	}
 	return e
 }

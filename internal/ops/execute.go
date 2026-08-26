@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/api"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/opspec"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 )
 
 // Status values reported in the data of a write operation.
@@ -113,7 +113,7 @@ func PlanOutput(env *opspec.Env, plan *safety.Plan) *output.Result {
 
 // ApproveCommand renders the exact command that applies a plan.
 func ApproveCommand(plan *safety.Plan) string {
-	cmd := "zabbix-ai-cli approve " + plan.ID
+	cmd := "zabbix-ai-cli-mcp approve " + plan.ID
 	if plan.RequiresConfirmName != "" {
 		cmd += fmt.Sprintf(" --confirm %q", plan.RequiresConfirmName)
 	}

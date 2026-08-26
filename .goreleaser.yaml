@@ -5,13 +5,13 @@ before:
     - go mod tidy
 
 builds:
-  - id: zabbix-ai-cli
-    main: ./cmd/zabbix-ai-cli
-    binary: zabbix-ai-cli
+  - id: zabbix-ai-cli-mcp
+    main: ./cmd/zabbix-ai-cli-mcp
+    binary: zabbix-ai-cli-mcp
     env: [CGO_ENABLED=0]
     flags: [-trimpath]
     ldflags:
-      - -s -w -X github.com/stufently/zabbix-ai-cli/internal/cli.Version={{.Version}}
+      - -s -w -X github.com/stufently/zabbix-ai-cli-mcp/internal/cli.Version={{.Version}}
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
 
@@ -27,15 +27,15 @@ checksum:
 
 dockers:
   - image_templates:
-      - "ghcr.io/stufently/zabbix-ai-cli:{{ .Version }}"
-      - "ghcr.io/stufently/zabbix-ai-cli:latest"
+      - "ghcr.io/stufently/zabbix-ai-cli-mcp:{{ .Version }}"
+      - "ghcr.io/stufently/zabbix-ai-cli-mcp:latest"
     dockerfile: Dockerfile.release
     build_flag_templates:
       - "--build-arg=VERSION={{ .Version }}"
       # The registry checks this label against the published server name, so an
       # image nobody can trace back to the manifest is rejected.
-      - '--label=io.modelcontextprotocol.server.name=io.github.stufently/zabbix-ai-cli'
-      - "--label=org.opencontainers.image.source=https://github.com/stufently/zabbix-ai-cli"
+      - '--label=io.modelcontextprotocol.server.name=io.github.stufently/zabbix-ai-cli-mcp'
+      - "--label=org.opencontainers.image.source=https://github.com/stufently/zabbix-ai-cli-mcp"
       - "--label=org.opencontainers.image.description=AI-first CLI and MCP server for Zabbix"
       - "--label=org.opencontainers.image.licenses=Apache-2.0"
 
@@ -43,21 +43,21 @@ dockers:
 # index the directories and the clients themselves read. Publishing is part of
 # cutting a release rather than a thing to remember afterwards.
 mcp:
-  name: io.github.stufently/zabbix-ai-cli
-  title: "Zabbix AI CLI"
+  name: io.github.stufently/zabbix-ai-cli-mcp
+  title: "Zabbix AI CLI MCP"
   description: "Task-shaped Zabbix access for AI agents: problems, host triage, metrics, maintenance windows."
-  homepage: "https://github.com/stufently/zabbix-ai-cli"
+  homepage: "https://github.com/stufently/zabbix-ai-cli-mcp"
   auth:
     # OIDC proves the release came from this repository's own workflow, so no
     # long-lived registry credential has to exist anywhere.
     type: github-oidc
   repository:
-    url: "https://github.com/stufently/zabbix-ai-cli"
+    url: "https://github.com/stufently/zabbix-ai-cli-mcp"
     source: github
     id: "1341361308"
   packages:
     - registry_type: oci
-      identifier: "ghcr.io/stufently/zabbix-ai-cli:{{ .Version }}"
+      identifier: "ghcr.io/stufently/zabbix-ai-cli-mcp:{{ .Version }}"
       transport:
         type: stdio
   # A release candidate must not become the version every client installs.

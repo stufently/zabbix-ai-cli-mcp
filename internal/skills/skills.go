@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 )
 
 //go:embed all:files

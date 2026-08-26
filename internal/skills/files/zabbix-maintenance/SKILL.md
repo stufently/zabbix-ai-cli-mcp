@@ -8,7 +8,7 @@ description: Manage Zabbix maintenance windows — silence hosts for planned wor
 ## Check first
 
 ```bash
-zabbix-ai-cli maintenance list --json
+zabbix-ai-cli-mcp maintenance list --json
 ```
 
 Expired windows are shown deliberately: "that one already ended, remove it" is a
@@ -20,8 +20,8 @@ how long an active window has left.
 Host names may be patterns, so a fleet can be silenced the way it is described:
 
 ```bash
-zabbix-ai-cli maintenance create "ms*,massivegrid*" --for 7d
-zabbix-ai-cli maintenance create db1,db2 --for 2h --description "index rebuild"
+zabbix-ai-cli-mcp maintenance create "ms*,massivegrid*" --for 7d
+zabbix-ai-cli-mcp maintenance create db1,db2 --for 2h --description "index rebuild"
 ```
 
 Durations are written the way people say them: `30m`, `2h`, `7d`, `2w`.
@@ -44,8 +44,8 @@ starting inside the window leaves no trace. Prefer the default unless asked.
 ## Ending a window
 
 ```bash
-zabbix-ai-cli maintenance expire 42     # ends now, keeps the record
-zabbix-ai-cli maintenance delete 42     # removes it entirely
+zabbix-ai-cli-mcp maintenance expire 42     # ends now, keeps the record
+zabbix-ai-cli-mcp maintenance delete 42     # removes it entirely
 ```
 
 Prefer `expire`. `delete` is destructive and needs the window named back exactly.

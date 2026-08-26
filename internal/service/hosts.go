@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
 )
 
 // Availability values reported for an interface or for the active agent.

@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/stufently/zabbix-ai-cli/internal/api"
-	"github.com/stufently/zabbix-ai-cli/internal/auth"
-	"github.com/stufently/zabbix-ai-cli/internal/config"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
-	"github.com/stufently/zabbix-ai-cli/internal/service"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/auth"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
 	"golang.org/x/term"
 )
 
@@ -234,7 +234,7 @@ func verifyToken(ctx context.Context, p config.Profile, token string) (string, e
 	}
 	client := api.New(p.URL, token,
 		api.WithHTTPClient(&http.Client{Timeout: 20 * time.Second, Transport: transport}),
-		api.WithUserAgent("zabbix-ai-cli/"+Version))
+		api.WithUserAgent("zabbix-ai-cli-mcp/"+Version))
 	svc := service.New(client)
 	version, err := svc.Version(ctx)
 	if err != nil {
@@ -552,7 +552,7 @@ func promptSecret(g *globals, label string) (string, error) {
 	f, ok := g.stdin.(*os.File)
 	if !ok || !term.IsTerminal(int(f.Fd())) {
 		return "", errs.Usage("stdin is not a terminal, so a token cannot be prompted for").
-			WithSuggestion("pipe it in: printf %%s \"$TOKEN\" | zabbix-ai-cli login --token-stdin --url ...")
+			WithSuggestion("pipe it in: printf %%s \"$TOKEN\" | zabbix-ai-cli-mcp login --token-stdin --url ...")
 	}
 	fmt.Fprint(g.stderr, label)
 	data, err := term.ReadPassword(int(f.Fd()))

@@ -6,8 +6,8 @@ import (
 
 	"context"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 )
 
 // event.acknowledge takes a bitmask. The public surface here is an enum

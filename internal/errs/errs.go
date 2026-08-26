@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/stufently/zabbix-ai-cli/internal/api"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
 )
 
 // Exit codes. Documented in docs/json-output.md and covered by CLI tests.
@@ -94,7 +94,7 @@ func NotFound(format string, args ...any) *E { return New(CodeNotFound, ExitNotF
 // HostNotFound is the specialised, most common not-found case.
 func HostNotFound(name string) *E {
 	return New(CodeHostNotFound, ExitNotFound, "host %q was not found", name).
-		WithSuggestion("run 'zabbix-ai-cli host list --search %s' to find the exact name; matching is fuzzy", name)
+		WithSuggestion("run 'zabbix-ai-cli-mcp host list --search %s' to find the exact name; matching is fuzzy", name)
 }
 
 // Ambiguous reports a fuzzy lookup that matched more than one resource.
@@ -137,7 +137,7 @@ func FromAPI(err error) *E {
 		switch {
 		case ae.Authentication():
 			return New(CodeAuth, ExitAuth, "Zabbix rejected the configured API token").
-				WithSuggestion("run 'zabbix-ai-cli login' to store a new token for the active profile").
+				WithSuggestion("run 'zabbix-ai-cli-mcp login' to store a new token for the active profile").
 				Wrap(err)
 		case ae.Permission():
 			return New(CodePermission, ExitPermission, "the Zabbix token lacks permission for this operation").

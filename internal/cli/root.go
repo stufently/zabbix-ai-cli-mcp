@@ -19,14 +19,14 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/stufently/zabbix-ai-cli/internal/api"
-	"github.com/stufently/zabbix-ai-cli/internal/auth"
-	"github.com/stufently/zabbix-ai-cli/internal/config"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/opspec"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
-	"github.com/stufently/zabbix-ai-cli/internal/service"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/auth"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
 )
 
 // Version is stamped at build time by the release build.
@@ -116,7 +116,7 @@ func (g *globals) buildEnv(ctx context.Context) (*opspec.Env, error) {
 	if profile.URL == "" {
 		return nil, errs.New(errs.CodeNoProfile, errs.ExitAuth,
 			"profile %q has no Zabbix URL", name).
-			WithSuggestion("run 'zabbix-ai-cli login --profile %s'", name)
+			WithSuggestion("run 'zabbix-ai-cli-mcp login --profile %s'", name)
 	}
 	var stdinToken string
 	if g.tokenStdin {
@@ -144,7 +144,7 @@ func (g *globals) buildEnv(ctx context.Context) (*opspec.Env, error) {
 	}
 	opts := []api.Option{
 		api.WithHTTPClient(hc),
-		api.WithUserAgent("zabbix-ai-cli/" + Version),
+		api.WithUserAgent("zabbix-ai-cli-mcp/" + Version),
 	}
 	if g.debug {
 		opts = append(opts, api.WithLogger(func(format string, args ...any) {
@@ -225,9 +225,9 @@ func reportError(g *globals, err error) int {
 
 func newRootCommand(g *globals) *cobra.Command {
 	root := &cobra.Command{
-		Use:   "zabbix-ai-cli",
+		Use:   "zabbix-ai-cli-mcp",
 		Short: "AI-first CLI, MCP server and skills for Zabbix",
-		Long: "zabbix-ai-cli turns Zabbix into a small set of task-shaped commands that an AI agent " +
+		Long: "zabbix-ai-cli-mcp turns Zabbix into a small set of task-shaped commands that an AI agent " +
 			"can be trusted to run: bounded output, stable JSON, and no change without approval.\n\n" +
 			"The tool never contacts a language model. An agent decides, this program executes, Zabbix monitors.",
 		SilenceUsage:  true,
@@ -329,7 +329,7 @@ func versionCommand(g *globals) *cobra.Command {
 				res.Meta.Returned = 1
 				return output.WriteJSON(g.stdout, res)
 			}
-			fmt.Fprintf(g.stdout, "zabbix-ai-cli %s\n", Version)
+			fmt.Fprintf(g.stdout, "zabbix-ai-cli-mcp %s\n", Version)
 			return nil
 		},
 	}

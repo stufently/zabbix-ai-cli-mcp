@@ -93,7 +93,7 @@ credentials file, stored plans and the audit log: directories `0700`, files
 
 On Windows those mode bits are not enforced by the operating system, and Go's
 `os.Chmod` cannot express an ACL. On a shared Windows machine, protect
-`%AppData%\zabbix-ai-cli` through the filesystem ACL, or supply the token
+`%AppData%\zabbix-ai-cli-mcp` through the filesystem ACL, or supply the token
 through the environment and keep nothing on disk.
 
 ## Reporting a vulnerability

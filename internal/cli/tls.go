@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/stufently/zabbix-ai-cli/internal/config"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 )
 
 // transportFor builds the HTTP transport for a profile.

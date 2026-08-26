@@ -1,4 +1,4 @@
-# zabbix-ai-cli — Design
+# zabbix-ai-cli-mcp — Design
 
 Date: 2026-08-21
 Status: approved
@@ -54,7 +54,7 @@ approval, audit), `internal/output` (envelope, projection, truncation),
 `internal/zbx` (version and capability layer).
 
 The `ops` registry is the single source of truth. CLI flags, MCP JSON schemas,
-`zabbix-ai-cli schema` output and safety metadata are all derived from the same
+`zabbix-ai-cli-mcp schema` output and safety metadata are all derived from the same
 `Operation` values, so the two front ends cannot drift apart. A test asserts
 that every operation is reachable from both front ends or explicitly marked
 otherwise.
@@ -85,14 +85,14 @@ permissions of the Zabbix token itself, which remains the last real boundary.
 
 MCP has no parameter that executes a write. A write tool returns a `plan_id`
 and a human-readable diff; the agent asks the operator to run
-`zabbix-ai-cli approve <plan_id>`. The approval secret never exists inside the
+`zabbix-ai-cli-mcp approve <plan_id>`. The approval secret never exists inside the
 LLM's context, so prompt injection cannot forge it. This is the only mechanism
 here that resists injection; a two-phase token inside the MCP channel would be
 approved by the same model that requested it, and is therefore not used.
 
 ### Plans
 
-A plan is a `0600` file under `$XDG_STATE_HOME/zabbix-ai-cli/plans/`. It holds
+A plan is a `0600` file under `$XDG_STATE_HOME/zabbix-ai-cli-mcp/plans/`. It holds
 the canonical operation name, normalised parameters, resolved resource IDs, an
 `impact_count`, preconditions, a parameter hash, and `expires_at` (15 minutes).
 Before execution the preconditions are re-checked against live Zabbix; if the
@@ -101,7 +101,7 @@ state moved since planning, the plan is rejected rather than applied blind.
 ### Audit
 
 Every executed write appends a JSON line to
-`$XDG_STATE_HOME/zabbix-ai-cli/audit.log`: timestamp, profile, operation,
+`$XDG_STATE_HOME/zabbix-ai-cli-mcp/audit.log`: timestamp, profile, operation,
 parameters, plan ID, approver path (`cli-apply` or `approve`), and the Zabbix
 result. Reads are not audited.
 
@@ -195,8 +195,8 @@ rules. Graphs, trends and reports are not planned.
 
 ## 8. Credentials
 
-Resolution order: `--token-stdin` > `ZABBIX_AI_CLI_TOKEN` >
-`ZABBIX_AI_CLI_TOKEN_FILE` > OS keyring > credentials file. There is no silent
+Resolution order: `--token-stdin` > `ZABBIX_AI_CLI_MCP_TOKEN` >
+`ZABBIX_AI_CLI_MCP_TOKEN_FILE` > OS keyring > credentials file. There is no silent
 fallback from keyring to a plaintext file: a keyring failure reports the
 available options and stops. The credentials file is an explicitly chosen
 backend, written atomically, directory `0700` and file `0600`, with owner and
@@ -215,8 +215,8 @@ scopes = ["read", "maintenance"]
 
 ## 9. Transports
 
-stdio is primary: `zabbix-ai-cli mcp --profile prod`. Streamable HTTP is
-available via `zabbix-ai-cli mcp --http 127.0.0.1:8000`, binds to loopback,
+stdio is primary: `zabbix-ai-cli-mcp mcp --profile prod`. Streamable HTTP is
+available via `zabbix-ai-cli-mcp mcp --http 127.0.0.1:8000`, binds to loopback,
 requires a bearer token compared in constant time, and is wrapped in
 `http.NewCrossOriginProtection` — the SDK applies no cross-origin protection by
 default. Explicit server timeouts and body limits apply. The Zabbix token is

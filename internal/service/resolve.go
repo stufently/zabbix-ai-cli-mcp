@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
 )
 
 // Patterns found in the notification templates Zabbix ships with, which is

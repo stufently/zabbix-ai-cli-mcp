@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/opspec"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
-	"github.com/stufently/zabbix-ai-cli/internal/service"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
 )
 
 func init() {

@@ -17,13 +17,13 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/stufently/zabbix-ai-cli/internal/config"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 	"github.com/zalando/go-keyring"
 )
 
 // keyringService namespaces this program's secrets in the OS keyring.
-const keyringService = "zabbix-ai-cli"
+const keyringService = "zabbix-ai-cli-mcp"
 
 // Source records where a token came from, for `auth status`.
 type Source string
@@ -84,7 +84,7 @@ func Resolve(name string, p config.Profile, stdinToken string) (Token, error) {
 	if v == "" {
 		return Token{}, errs.New(errs.CodeAuth, errs.ExitAuth,
 			"no API token is stored for profile %q", name).
-			WithSuggestion("run 'zabbix-ai-cli login --profile %s', or set %s", name, config.EnvToken)
+			WithSuggestion("run 'zabbix-ai-cli-mcp login --profile %s', or set %s", name, config.EnvToken)
 	}
 	return Token{Value: v, Source: SourceFile}, nil
 }
@@ -93,7 +93,7 @@ func keyringFailure(name string, err error) error {
 	if errors.Is(err, keyring.ErrNotFound) {
 		return errs.New(errs.CodeAuth, errs.ExitAuth,
 			"profile %q uses the OS keyring but holds no token", name).
-			WithSuggestion("run 'zabbix-ai-cli login --profile %s'", name)
+			WithSuggestion("run 'zabbix-ai-cli-mcp login --profile %s'", name)
 	}
 	suggestion := fmt.Sprintf(
 		"the keyring is unavailable and this program will not silently fall back to a plaintext file; "+

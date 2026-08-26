@@ -7,7 +7,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 )
 
 func checkOwner(fi fs.FileInfo) error {

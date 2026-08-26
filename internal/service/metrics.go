@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
 )
 
 // Zabbix value types, which double as history table selectors.

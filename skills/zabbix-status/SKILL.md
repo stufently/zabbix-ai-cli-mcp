@@ -5,25 +5,25 @@ description: Answer "what is broken right now" from Zabbix. Use when asked about
 
 # Zabbix: current state
 
-Answer questions about what is wrong now, using `zabbix-ai-cli`.
+Answer questions about what is wrong now, using `zabbix-ai-cli-mcp`.
 
 ## Workflow
 
 1. **Broad question** ("what's broken?", "any alerts?"):
    ```bash
-   zabbix-ai-cli problems list --json
+   zabbix-ai-cli-mcp problems list --json
    ```
    Add `--severity high` to cut noise, `--limit N` to bound the answer.
 
 2. **About one host**: pass it through. Matching is fuzzy, so a fragment works.
    ```bash
-   zabbix-ai-cli problems list --host web01 --json
-   zabbix-ai-cli host status web01 --json
+   zabbix-ai-cli-mcp problems list --host web01 --json
+   zabbix-ai-cli-mcp host status web01 --json
    ```
 
 3. **Nothing came back**: the host name may not be what you assumed.
    ```bash
-   zabbix-ai-cli host list --search web --json
+   zabbix-ai-cli-mcp host list --search web --json
    ```
 
 ## Reading the result

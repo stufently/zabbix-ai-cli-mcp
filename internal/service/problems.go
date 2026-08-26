@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
 )
 
 type wireProblem struct {
@@ -310,7 +310,7 @@ func (s *Service) GetProblem(ctx context.Context, eventID string) (*Problem, err
 	}
 	if len(wire) == 0 {
 		return nil, errs.NotFound("no active problem has event ID %s", eventID).
-			WithSuggestion("the problem may already be resolved; 'zabbix-ai-cli alert why %s' still works for resolved events", eventID)
+			WithSuggestion("the problem may already be resolved; 'zabbix-ai-cli-mcp alert why %s' still works for resolved events", eventID)
 	}
 	p := wire[0].toProblem()
 	list := []Problem{p}

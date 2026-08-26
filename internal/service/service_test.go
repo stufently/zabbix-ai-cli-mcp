@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/api"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/service"
-	"github.com/stufently/zabbix-ai-cli/internal/zbxtest"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/zbxtest"
 )
 
 func newService(t *testing.T, srv *zbxtest.Server) *service.Service {

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 )
 
 // ServeStdio runs the server over stdio, which is the primary transport.
@@ -153,7 +153,7 @@ func requireBearer(next http.Handler, token string) http.Handler {
 		got := []byte(r.Header.Get("Authorization"))
 		if subtle.ConstantTimeEq(int32(len(got)), int32(len(want))) != 1 ||
 			subtle.ConstantTimeCompare(got, want) != 1 {
-			w.Header().Set("WWW-Authenticate", `Bearer realm="zabbix-ai-cli"`)
+			w.Header().Set("WWW-Authenticate", `Bearer realm="zabbix-ai-cli-mcp"`)
 			http.Error(w, "unauthorised", http.StatusUnauthorized)
 			return
 		}

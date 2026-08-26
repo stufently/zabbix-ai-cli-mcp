@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 )
 
 // planIDPattern constrains an identifier to what this program generates, so a
@@ -87,7 +87,7 @@ func (s *Store) Load(id string) (*Plan, error) {
 				WithSuggestion("check the audit log before planning the same change again")
 		}
 		return nil, errs.New(errs.CodePlanNotFound, errs.ExitNotFound, "no plan %s exists", id).
-			WithSuggestion("run 'zabbix-ai-cli plans list' to see outstanding plans; they expire after %s", DefaultTTL)
+			WithSuggestion("run 'zabbix-ai-cli-mcp plans list' to see outstanding plans; they expire after %s", DefaultTTL)
 	}
 	if err != nil {
 		return nil, err

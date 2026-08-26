@@ -4,11 +4,11 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/stufently/zabbix-ai-cli/internal/config"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/ops"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/ops"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 )
 
 func stateDir() (string, error) { return config.StateDir() }
@@ -39,7 +39,7 @@ func schemaCommand(g *globals) *cobra.Command {
 				op, ok := ops.LookupCommand(strings.Join(args, " "))
 				if !ok {
 					return errs.NotFound("no operation is called %q", args[0]).
-						WithSuggestion("run 'zabbix-ai-cli schema' to list them")
+						WithSuggestion("run 'zabbix-ai-cli-mcp schema' to list them")
 				}
 				res := &output.Result{Data: op.Describe()}
 				res.Meta.Returned = 1

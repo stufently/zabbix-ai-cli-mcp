@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stufently/zabbix-ai-cli/internal/cli"
-	"github.com/stufently/zabbix-ai-cli/internal/config"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/zbxtest"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/cli"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/zbxtest"
 )
 
 const testToken = "super-secret-token-value"

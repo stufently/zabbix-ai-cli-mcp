@@ -31,7 +31,7 @@ func TestCallSendsBearerAndDecodesResult(t *testing.T) {
 		_, _ = io.WriteString(w, `{"jsonrpc":"2.0","result":["a","b"],"id":1}`)
 	})
 
-	c := New(s.URL, "sekrit", WithUserAgent("zabbix-ai-cli/test"))
+	c := New(s.URL, "sekrit", WithUserAgent("zabbix-ai-cli-mcp/test"))
 	var out []string
 	if err := c.Call(context.Background(), "host.get", map[string]any{"output": "extend"}, &out); err != nil {
 		t.Fatalf("Call: %v", err)
@@ -45,7 +45,7 @@ func TestCallSendsBearerAndDecodesResult(t *testing.T) {
 	if gotCT != "application/json-rpc" {
 		t.Errorf("Content-Type = %q", gotCT)
 	}
-	if gotUA != "zabbix-ai-cli/test" {
+	if gotUA != "zabbix-ai-cli-mcp/test" {
 		t.Errorf("User-Agent = %q", gotUA)
 	}
 	var req map[string]any

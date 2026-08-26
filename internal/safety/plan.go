@@ -4,7 +4,7 @@
 // The model has one rule: nothing that writes executes on the same call that
 // requested it. A CLI user confirms with --apply, because a human typed the
 // command. An MCP client cannot confirm at all; it receives a plan identifier
-// and the change happens only when a person runs `zabbix-ai-cli approve`.
+// and the change happens only when a person runs `zabbix-ai-cli-mcp approve`.
 // A confirmation token carried inside the MCP channel would be approved by the
 // same model that asked for it, which is why one is not offered.
 package safety

@@ -1,17 +1,17 @@
 # Work log
 
-## COMPLETED — 2026-08-21 — zabbix-ai-cli v0.1 and cutover
+## COMPLETED — 2026-08-21 — zabbix-ai-cli-mcp v0.1 and cutover
 
 Built the project, verified it against the live Zabbix 7.4.10, and replaced the
 previous MCP server with it.
 
-- Repository published at `github.com/stufently/zabbix-ai-cli`.
-- Binary installed at `~/bin/zabbix-ai-cli`; profile `prod` carries the token
+- Repository published at `github.com/stufently/zabbix-ai-cli-mcp`.
+- Binary installed at `~/bin/zabbix-ai-cli-mcp`; profile `prod` carries the token
   transferred from the old container, with the `maintenance` and `acknowledge`
   scopes granted.
 - Skills installed into `~/.claude/skills` and `~/.codex/skills`.
 - The `zabbix` MCP entry in `~/.claude.json` now runs
-  `/home/deploy/bin/zabbix-ai-cli mcp --profile prod` over stdio. The old
+  `/home/deploy/bin/zabbix-ai-cli-mcp mcp --profile prod` over stdio. The old
   container `zabbix-mcp-server` is stopped and removed; its image is kept.
 - **Takes effect on the next Claude Code restart.**
 
@@ -20,7 +20,7 @@ Rollback, if it is ever needed: `docker compose up -d` in
 `.bak-20260821-055539` copy alongside it.
 
 What changed in the code is in CHANGELOG.md; the design and its reasoning are in
-`docs/superpowers/specs/2026-08-21-zabbix-ai-cli-design.md`.
+`docs/superpowers/specs/2026-08-21-zabbix-ai-cli-mcp-design.md`.
 
 ## COMPLETED — 2026-08-21 — review round two
 
@@ -56,8 +56,8 @@ MCP binary on this host updated to `51f1643` via `make install`.
 
 The repository is public (gitleaks found nothing in its history first), tagged
 v0.1.0, and published: release archives for six platforms, `ghcr.io/stufently/
-zabbix-ai-cli` (anonymously pullable), and an entry in the official MCP registry
-as `io.github.stufently/zabbix-ai-cli`.
+zabbix-ai-cli-mcp` (anonymously pullable), and an entry in the official MCP registry
+as `io.github.stufently/zabbix-ai-cli-mcp`.
 
 Discovery work: repository description and 20 topics — `mcp-server` and
 `model-context-protocol` are what Glama and PulseMCP crawl for; README rewritten
@@ -66,10 +66,10 @@ with per-client install snippets and a FAQ; CONTRIBUTING and a code of conduct.
 The local MCP now runs the ghcr image instead of `~/bin`, pinned to `0.1.0`.
 The profile is mounted read-only and the state directory read-write and shared,
 so a plan created by an agent is still approved from the host with
-`zabbix-ai-cli approve <id>`.
+`zabbix-ai-cli-mcp approve <id>`.
 
 Rollback: restore `~/.claude.json` from `.bak-20260821-102243`, which points the
-MCP back at `/home/deploy/bin/zabbix-ai-cli`.
+MCP back at `/home/deploy/bin/zabbix-ai-cli-mcp`.
 
 Bumping the pinned image later means editing that one `args` entry in
 `~/.claude.json` after the new tag's release finishes.
@@ -97,7 +97,7 @@ those go out at build time.
 
 Two assets do most of the work and both are already live: this repository
 carrying the `mcp-server` and `model-context-protocol` topics, and the entry in
-the official registry as `io.github.stufently/zabbix-ai-cli`. Everything below
+the official registry as `io.github.stufently/zabbix-ai-cli-mcp`. Everything below
 either follows from those or reaches an audience the MCP directories do not.
 
 Traffic figures are third-party estimates (SimilarWeb, via a May 2026 survey of
@@ -111,7 +111,7 @@ needed — only a check that it landed and that the card reads correctly.
 - [ ] Glama (~105K/mo): card exists, description not truncated, tools detected
 - [ ] PulseMCP (~277K/mo): same
 - [ ] The registry entry still resolves and points at the current version:
-      `curl -s 'https://registry.modelcontextprotocol.io/v0/servers?search=zabbix-ai-cli'`
+      `curl -s 'https://registry.modelcontextprotocol.io/v0/servers?search=zabbix-ai-cli-mcp'`
 
 ### Submit by hand
 

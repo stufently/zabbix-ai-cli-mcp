@@ -11,7 +11,7 @@ Collect the facts about one host, then reason over them. The tool gathers; you i
 
 1. **One call gathers the context.** Do not assemble it by hand.
    ```bash
-   zabbix-ai-cli host investigate web01 --json
+   zabbix-ai-cli-mcp host investigate web01 --json
    ```
    This returns host state, agent availability, active problems, recent events,
    silent and unsupported items, and any maintenance window covering the host.
@@ -30,7 +30,7 @@ Collect the facts about one host, then reason over them. The tool gathers; you i
 
 3. **Values over time**, when a problem is about a threshold:
    ```bash
-   zabbix-ai-cli metrics history web01 "cpu util" --last 24h --json
+   zabbix-ai-cli-mcp metrics history web01 "cpu util" --last 24h --json
    ```
    The `summary` block gives min, average and max without reading every point.
 

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stufently/zabbix-ai-cli/internal/api"
-	"github.com/stufently/zabbix-ai-cli/internal/config"
-	"github.com/stufently/zabbix-ai-cli/internal/opspec"
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
-	"github.com/stufently/zabbix-ai-cli/internal/service"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
 )
 
 func TestEveryOperationIsWellFormed(t *testing.T) {

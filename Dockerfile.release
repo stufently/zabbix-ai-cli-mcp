@@ -12,14 +12,14 @@ RUN mkdir -p /out/state && chmod 700 /out/state
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY zabbix-ai-cli /usr/local/bin/zabbix-ai-cli
-COPY --from=state --chown=65532:65532 /out/state /var/lib/zabbix-ai-cli
+COPY zabbix-ai-cli-mcp /usr/local/bin/zabbix-ai-cli-mcp
+COPY --from=state --chown=65532:65532 /out/state /var/lib/zabbix-ai-cli-mcp
 
 # Plans and the audit log live here. Mount a writable volume over it to keep
 # them; the root filesystem is expected to be read-only.
-ENV ZABBIX_AI_CLI_STATE_DIR=/var/lib/zabbix-ai-cli
-VOLUME /var/lib/zabbix-ai-cli
+ENV ZABBIX_AI_CLI_MCP_STATE_DIR=/var/lib/zabbix-ai-cli-mcp
+VOLUME /var/lib/zabbix-ai-cli-mcp
 
 USER nonroot:nonroot
-ENTRYPOINT ["/usr/local/bin/zabbix-ai-cli"]
+ENTRYPOINT ["/usr/local/bin/zabbix-ai-cli-mcp"]
 CMD ["mcp"]

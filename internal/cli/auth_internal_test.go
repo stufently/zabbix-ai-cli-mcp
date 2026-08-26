@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stufently/zabbix-ai-cli/internal/auth"
-	"github.com/stufently/zabbix-ai-cli/internal/config"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/auth"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
 )
 
 func TestPersistLoginMigratesBackendsAndRemovesOldToken(t *testing.T) {

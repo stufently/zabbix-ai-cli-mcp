@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/stufently/zabbix-ai-cli/security/advisories/new
+    url: https://github.com/stufently/zabbix-ai-cli-mcp/security/advisories/new
     about: Report privately. Please do not open a public issue for a vulnerability.
   - name: Question or idea
-    url: https://github.com/stufently/zabbix-ai-cli/discussions
+    url: https://github.com/stufently/zabbix-ai-cli-mcp/discussions
     about: Ask how something works, or float a change before writing it.

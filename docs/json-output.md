@@ -59,7 +59,7 @@ produces a wrong conclusion.
     "code": "HOST_NOT_FOUND",
     "message": "host 'server01' was not found",
     "retryable": false,
-    "suggestion": "run 'zabbix-ai-cli host list --search server01' to find the exact name; matching is fuzzy"
+    "suggestion": "run 'zabbix-ai-cli-mcp host list --search server01' to find the exact name; matching is fuzzy"
   }
 }
 ```
@@ -108,9 +108,9 @@ accompanies `ok: true`.
 ## Self-description
 
 ```bash
-zabbix-ai-cli schema                  # every operation
-zabbix-ai-cli schema host.investigate # one operation, with its JSON Schema
-zabbix-ai-cli schema api-methods      # the raw methods the escape hatch accepts
+zabbix-ai-cli-mcp schema                  # every operation
+zabbix-ai-cli-mcp schema host.investigate # one operation, with its JSON Schema
+zabbix-ai-cli-mcp schema api-methods      # the raw methods the escape hatch accepts
 ```
 
 The output is generated from the same operation registry the CLI commands and the

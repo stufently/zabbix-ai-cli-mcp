@@ -7,7 +7,7 @@ without leaking anything.
 ## Creating a profile
 
 ```bash
-zabbix-ai-cli login --profile prod
+zabbix-ai-cli-mcp login --profile prod
 ```
 
 The command asks for the URL and the API token, verifies the token against the
@@ -17,7 +17,7 @@ the next incident.
 Non-interactively:
 
 ```bash
-printf %s "$TOKEN" | zabbix-ai-cli login \
+printf %s "$TOKEN" | zabbix-ai-cli-mcp login \
   --profile prod \
   --url https://zabbix.example.com \
   --token-stdin
@@ -31,14 +31,14 @@ in the process list, where anything on the machine can read them.
 The first of these that yields a token wins:
 
 1. `--token-stdin`
-2. `ZABBIX_AI_CLI_TOKEN`
-3. `ZABBIX_AI_CLI_TOKEN_FILE` — a path; the file must not be readable by others
+2. `ZABBIX_AI_CLI_MCP_TOKEN`
+3. `ZABBIX_AI_CLI_MCP_TOKEN_FILE` — a path; the file must not be readable by others
 4. the profile's `token_file`
 5. the OS keyring, if the profile selected it
 6. the credentials file
 
-The URL resolves independently: `ZABBIX_AI_CLI_URL` overrides the profile.
-The profile itself comes from `--profile`, then `ZABBIX_AI_CLI_PROFILE`, then
+The URL resolves independently: `ZABBIX_AI_CLI_MCP_URL` overrides the profile.
+The profile itself comes from `--profile`, then `ZABBIX_AI_CLI_MCP_PROFILE`, then
 `active_profile` in the configuration.
 
 ## The keyring never falls back silently
@@ -53,14 +53,14 @@ user asked for without telling them.
 ## Files
 
 ```
-$XDG_CONFIG_HOME/zabbix-ai-cli/config.toml       0600, no secrets
-$XDG_CONFIG_HOME/zabbix-ai-cli/credentials.toml  0600, tokens
-$XDG_STATE_HOME/zabbix-ai-cli/plans/             0600, pending changes
-$XDG_STATE_HOME/zabbix-ai-cli/audit.log          0600, applied changes
+$XDG_CONFIG_HOME/zabbix-ai-cli-mcp/config.toml       0600, no secrets
+$XDG_CONFIG_HOME/zabbix-ai-cli-mcp/credentials.toml  0600, tokens
+$XDG_STATE_HOME/zabbix-ai-cli-mcp/plans/             0600, pending changes
+$XDG_STATE_HOME/zabbix-ai-cli-mcp/audit.log          0600, applied changes
 ```
 
 macOS and Windows use the platform's own configuration directory.
-`ZABBIX_AI_CLI_CONFIG_DIR` and `ZABBIX_AI_CLI_STATE_DIR` override both.
+`ZABBIX_AI_CLI_MCP_CONFIG_DIR` and `ZABBIX_AI_CLI_MCP_STATE_DIR` override both.
 
 Credential files are checked before being read: a symlink, a non-regular file, a
 file owned by another user, or one readable by group or other is refused rather
@@ -94,8 +94,8 @@ matching scope:
 | `configuration` | triggers, items, hosts and other configuration |
 
 ```bash
-zabbix-ai-cli profile scopes prod --add maintenance
-zabbix-ai-cli profile scopes prod --remove configuration
+zabbix-ai-cli-mcp profile scopes prod --add maintenance
+zabbix-ai-cli-mcp profile scopes prod --remove configuration
 ```
 
 Scopes sit behind the permissions of the Zabbix token itself, which remains the
@@ -109,16 +109,16 @@ anything that can read the process:
 
 ```bash
 docker run --rm \
-  -e ZABBIX_AI_CLI_URL=https://zabbix.example.com \
-  -e ZABBIX_AI_CLI_TOKEN_FILE=/run/secrets/zabbix \
+  -e ZABBIX_AI_CLI_MCP_URL=https://zabbix.example.com \
+  -e ZABBIX_AI_CLI_MCP_TOKEN_FILE=/run/secrets/zabbix \
   -v /run/secrets/zabbix:/run/secrets/zabbix:ro \
-  ghcr.io/stufently/zabbix-ai-cli mcp
+  ghcr.io/stufently/zabbix-ai-cli-mcp mcp
 ```
 
 ## Checking
 
 ```bash
-zabbix-ai-cli auth status
+zabbix-ai-cli-mcp auth status
 ```
 
 Reports the profile, the URL, where the token came from, the granted scopes and

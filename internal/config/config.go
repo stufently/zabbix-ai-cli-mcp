@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 )
 
 // Scopes a profile can grant. Read is implicit and always present.
@@ -82,7 +82,7 @@ func (c *Config) Names() []string {
 }
 
 // Resolve returns the profile to use. An explicit name wins over the
-// ZABBIX_AI_CLI_PROFILE environment variable, which wins over active_profile.
+// ZABBIX_AI_CLI_MCP_PROFILE environment variable, which wins over active_profile.
 func (c *Config) Resolve(explicit string) (string, Profile, error) {
 	name := explicit
 	if name == "" {
@@ -98,7 +98,7 @@ func (c *Config) Resolve(explicit string) (string, Profile, error) {
 		}
 		return "", Profile{}, errs.New(errs.CodeNoProfile, errs.ExitAuth,
 			"no Zabbix profile is configured").
-			WithSuggestion("run 'zabbix-ai-cli login' to create one, or set %s and %s", EnvURL, EnvToken)
+			WithSuggestion("run 'zabbix-ai-cli-mcp login' to create one, or set %s and %s", EnvURL, EnvToken)
 	}
 	p, ok := c.Profiles[name]
 	if !ok {
@@ -117,15 +117,15 @@ func (c *Config) Resolve(explicit string) (string, Profile, error) {
 
 // Environment variables. Documented in docs/authentication.md.
 const (
-	EnvURL       = "ZABBIX_AI_CLI_URL"
-	EnvToken     = "ZABBIX_AI_CLI_TOKEN"
-	EnvTokenFile = "ZABBIX_AI_CLI_TOKEN_FILE"
-	EnvProfile   = "ZABBIX_AI_CLI_PROFILE"
-	EnvConfigDir = "ZABBIX_AI_CLI_CONFIG_DIR"
-	EnvStateDir  = "ZABBIX_AI_CLI_STATE_DIR"
+	EnvURL       = "ZABBIX_AI_CLI_MCP_URL"
+	EnvToken     = "ZABBIX_AI_CLI_MCP_TOKEN"
+	EnvTokenFile = "ZABBIX_AI_CLI_MCP_TOKEN_FILE"
+	EnvProfile   = "ZABBIX_AI_CLI_MCP_PROFILE"
+	EnvConfigDir = "ZABBIX_AI_CLI_MCP_CONFIG_DIR"
+	EnvStateDir  = "ZABBIX_AI_CLI_MCP_STATE_DIR"
 )
 
-const appName = "zabbix-ai-cli"
+const appName = "zabbix-ai-cli-mcp"
 
 // Dir returns the configuration directory, honouring XDG on Unix and the
 // platform convention elsewhere.

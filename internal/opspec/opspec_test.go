@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/safety"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 )
 
 func testOperation() *Operation {

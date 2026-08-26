@@ -15,9 +15,9 @@ confident wrong conclusion. No business logic is duplicated in them.
 ## Installing
 
 ```bash
-zabbix-ai-cli skills list
-zabbix-ai-cli skills install claude
-zabbix-ai-cli skills install codex
+zabbix-ai-cli-mcp skills list
+zabbix-ai-cli-mcp skills install claude
+zabbix-ai-cli-mcp skills install codex
 ```
 
 Both runtimes read `skills/<name>/SKILL.md` with YAML front matter, so one set of
@@ -30,7 +30,7 @@ replaced.
 
 ## Why they exist
 
-The commands are discoverable through `zabbix-ai-cli schema`, but discoverability
+The commands are discoverable through `zabbix-ai-cli-mcp schema`, but discoverability
 does not convey judgement. A skill is where the judgement lives: that suppressed
 problems must be reported rather than filtered out; that an empty problem list is
 not evidence of health until maintenance and no-data have been checked; that
@@ -51,7 +51,7 @@ description: Assess Zabbix host capacity trends — disk filling up, memory pres
 
 # Zabbix: capacity
 
-1. `zabbix-ai-cli metrics history <host> "disk" --last 7d --json`
+1. `zabbix-ai-cli-mcp metrics history <host> "disk" --last 7d --json`
 2. Read the `summary` block rather than every point.
 3. ...
 ```

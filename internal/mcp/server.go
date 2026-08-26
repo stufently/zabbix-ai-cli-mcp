@@ -14,10 +14,10 @@ import (
 	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/ops"
-	"github.com/stufently/zabbix-ai-cli/internal/opspec"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/ops"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
 )
 
 // Options configure the server.
@@ -34,7 +34,7 @@ type Options struct {
 // NewServer builds an MCP server exposing the registry.
 func NewServer(opts Options) *sdk.Server {
 	server := sdk.NewServer(&sdk.Implementation{
-		Name:    "zabbix-ai-cli",
+		Name:    "zabbix-ai-cli-mcp",
 		Version: opts.Version,
 		Title:   "Zabbix",
 	}, &sdk.ServerOptions{

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
 )
 
 // HostStatus is the high-level operational state of one host.

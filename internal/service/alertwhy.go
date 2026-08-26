@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stufently/zabbix-ai-cli/internal/errs"
-	"github.com/stufently/zabbix-ai-cli/internal/output"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/output"
 )
 
 // Alert delivery statuses as reported by alert.get.
@@ -217,7 +217,7 @@ func (s *Service) getEvent(ctx context.Context, eventID string) (*wireEvent, err
 	}
 	if len(events) == 0 {
 		return nil, errs.NotFound("event %s does not exist", eventID).
-			WithSuggestion("event IDs come from 'zabbix-ai-cli problems list'; a pasted alert can be resolved with 'zabbix-ai-cli resolve'")
+			WithSuggestion("event IDs come from 'zabbix-ai-cli-mcp problems list'; a pasted alert can be resolved with 'zabbix-ai-cli-mcp resolve'")
 	}
 	return &events[0], nil
 }
