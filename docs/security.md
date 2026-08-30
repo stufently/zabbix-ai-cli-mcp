@@ -8,8 +8,8 @@ line, or a Zabbix host name — all of which this program returns.
 
 | Risk | Mitigation |
 | --- | --- |
-| An agent makes a destructive change it was talked into | No MCP tool can write. A change becomes a plan; a person applies it at a terminal. |
-| Prompt injection supplies a confirmation | The confirmation does not exist in the model's context. There is no MCP parameter that authorises anything. |
+| An agent makes a destructive change it was talked into | `allow_write` decides. With it off, no MCP tool writes: a change becomes a plan a person applies at a terminal. With it on, the change is bounded by the profile's scopes and the risk registry, and lands in the audit log. |
+| Prompt injection supplies a confirmation | No confirmation exists in the model's context to supply. Authorisation is configuration, read from the file or the environment; no MCP parameter carries it. |
 | An agent acts on a stale plan | Parameters are hashed, plans expire after 15 minutes, and preconditions are re-read from Zabbix immediately before execution. |
 | The token leaks into output or logs | The token is never printed, never logged, and never included in an error. Debug logging redacts request bodies. The MCP client never receives it. |
 | Injection through Zabbix data | Returned strings are stripped of control characters and length-bounded. No policy decision reads their content. |
@@ -26,8 +26,10 @@ was that the work got done anyway — with a token read out of a container's
 environment, through a script that logged nothing. The refusal did not remove the
 capability, only the record of it.
 
-A permitted path that is planned, approved by a person and written to an audit log
-is a better outcome than a refusal that gets routed around.
+A permitted path that is bounded, classified and written to an audit log is a
+better outcome than a refusal that gets routed around. Whether the path also
+waits for a person is the `allow_write` setting, and the audit log is kept
+either way.
 
 ## What is refused outright
 
@@ -54,36 +56,61 @@ configuration is code or invokes code: `script`, `action`, `mediatype`, `item`,
 lengthen the road to running a command on a monitored host, not close it. Reading
 any of them stays available.
 
-## What the approval gate does and does not protect
+## The write setting
 
-The gate is drawn against the model, not against the operating system. Nothing
-an MCP client can send applies a change: there is no `apply` parameter, and a
-test fails the build if one appears. What the model gets back is a plan and the
-command a person would run.
+`allow_write` decides whether a change may be applied by the call that asked for
+it. It defaults to allowed. A profile's own `allow_write` overrides the
+file-wide value, and `ZABBIX_AI_CLI_MCP_ALLOW_WRITE` overrides both — a
+container is configured through its environment and a config file it may not
+own. A value that is neither true nor false is an error rather than a guess.
 
-That boundary is the OS user. An agent that also has a shell as the same user can
-run `--apply` itself — and could equally read the token and call Zabbix directly,
-so the plan file is not what is holding it back. For the same reason a stored
-plan's hash is a check against corruption and stale reuse, not authentication:
-whoever can rewrite the file can recompute the hash. That is why risk and scope
-are derived again from the registry when a plan is applied, and a plan claiming
-anything weaker than the code says is refused.
+With writes allowed, `zabbix_write` appears over MCP and an agent applies a
+change itself. Everything else still applies: the profile's scopes, the risk
+registry, the preconditions re-read from Zabbix, and the audit log, which
+records whether a person or a model asked. Naming the target back is no longer
+required for a destructive change applied directly — the caller supplied the
+target in the same call — but it is still required to approve a stored plan,
+where the point is that the plan is being read some time after it was written.
+
+With writes disabled, nothing an MCP client can send applies a change: there is
+no `apply` parameter, and a test fails the build if one appears. What the model
+gets back is a plan and the command a person would run.
+
+## What the gate does and does not protect
+
+The gate is drawn against the model, not against the operating system.
+
+That boundary is the OS user. An agent that also has a shell as the same user
+can flip `allow_write` in the config file or run `--apply` itself — and could
+equally read the token and call Zabbix directly, so neither the setting nor the
+plan file is what is holding it back. For the same reason a stored plan's hash
+is a check against corruption and stale reuse, not authentication: whoever can
+rewrite the file can recompute the hash. That is why risk and scope are derived
+again from the registry when a plan is applied, and a plan claiming anything
+weaker than the code says is refused.
 
 If an agent session on your machine should not be able to change Zabbix at all,
-give it a profile without write scopes, or run the MCP server as a different user
-from the one holding a write-capable token. Separating those users is the only
-arrangement in which `--apply` is genuinely out of reach.
+run the MCP server as a different user from the one holding a write-capable
+token, with a profile whose scopes or `allow_write` say no. Separating those
+users is the only arrangement in which the setting is genuinely out of reach.
+
+An HTTP endpoint is open to every process on the machine unless it carries a
+bearer token. That is defensible for a server that only reads, so a server that
+can write refuses to start without one: set `ZABBIX_AI_CLI_MCP_BEARER_TOKEN`,
+or run it `--read-only`.
 
 ## Layers
 
 1. **The Zabbix token's own permissions.** The last real boundary. Give the token
    the least privilege the work needs; nothing here can widen it.
-2. **Profile scopes.** A profile grants `read` and nothing else until told
-   otherwise. Without the matching scope, a write cannot even be planned.
+2. **Profile scopes.** A profile that names scopes is held to exactly those;
+   without the matching scope, a write cannot even be planned. A profile that
+   names none may do what the write setting allows.
 3. **The risk registry.** An explicit table of what each operation may do.
-4. **Plan and approval.** Nothing writes on the call that requested it.
+4. **The write setting.** `allow_write = false` means nothing writes on the
+   call that requested it; a person applies the stored plan at a terminal.
 5. **The audit log.** Every applied change, with its plan, its parameters
-   redacted of secrets, and how it was authorised.
+   redacted of secrets, and whether a person or a model authorised it.
 
 ## Platform note
 

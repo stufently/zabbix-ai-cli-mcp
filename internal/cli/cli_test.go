@@ -26,12 +26,22 @@ type harness struct {
 // a test never touches the developer's real configuration.
 func newHarness(t *testing.T, scopes ...string) *harness {
 	t.Helper()
+	return newHarnessWith(t, nil, scopes...)
+}
+
+// newHarnessWith builds the same throwaway installation with an explicit
+// answer to "may this profile be written to directly". Nil leaves the setting
+// absent, which is what a config file written before the setting existed looks
+// like.
+func newHarnessWith(t *testing.T, allowWrite *bool, scopes ...string) *harness {
+	t.Helper()
 	srv := zbxtest.New(t, "7.4.10")
 	cfgDir := t.TempDir()
 	stateDir := t.TempDir()
 
 	cfg := &config.Config{
 		ActiveProfile: "test",
+		AllowWrite:    allowWrite,
 		Profiles: map[string]config.Profile{
 			"test": {URL: srv.URL, Scopes: scopes},
 		},
@@ -153,16 +163,40 @@ func TestWriteExecutesWithApply(t *testing.T) {
 	}
 }
 
-func TestDestructiveWriteNeedsTheTargetNamedBack(t *testing.T) {
-	h := newHarness(t, config.ScopeMaintenance)
+func maintenanceSeven(h *harness) {
 	h.server.Reply("maintenance.get", []any{map[string]any{
 		"maintenanceid": "7", "name": "weekend window", "maintenance_type": "0",
 		"active_since": "1787000000", "active_till": "1790000000",
 		"hosts": []any{}, "hostgroups": []any{}, "timeperiods": []any{},
 	}})
 	h.server.Reply("maintenance.delete", map[string]any{"maintenanceids": []any{"7"}})
+}
+
+func TestDestructiveApplyRunsWithoutTheEcho(t *testing.T) {
+	// --apply was handed the target on the same command line, so naming it
+	// back would only be the caller repeating itself.
+	h := newHarness(t, config.ScopeMaintenance)
+	maintenanceSeven(h)
 
 	r := h.run("maintenance", "delete", "7", "--apply", "--json")
+	if r.code != errs.ExitOK {
+		t.Fatalf("exit = %d, stderr: %s\n%s", r.code, r.stderr, r.stdout)
+	}
+	if calls := h.server.CallsTo("maintenance.delete"); len(calls) != 1 {
+		t.Fatalf("maintenance.delete was called %d times", len(calls))
+	}
+}
+
+func TestApprovingADestructivePlanNeedsTheTargetNamedBack(t *testing.T) {
+	// A stored plan is read minutes after it was made, and the echo is what
+	// stops the wrong one being approved.
+	h := newHarness(t, config.ScopeMaintenance)
+	maintenanceSeven(h)
+
+	r := h.run("maintenance", "delete", "7", "--json")
+	planID := r.envelope(t)["data"].(map[string]any)["plan_id"].(string)
+
+	r = h.run("approve", planID, "--yes", "--json")
 	if r.code != errs.ExitApprovalRequired {
 		t.Fatalf("exit = %d, want %d\n%s", r.code, errs.ExitApprovalRequired, r.stdout)
 	}
@@ -170,18 +204,64 @@ func TestDestructiveWriteNeedsTheTargetNamedBack(t *testing.T) {
 		t.Fatal("a destructive change ran without the confirmation")
 	}
 
-	r = h.run("maintenance", "delete", "7", "--apply", "--confirm", "weekend window", "--json")
+	r = h.run("approve", planID, "--yes", "--confirm", "weekend window", "--json")
 	if r.code != errs.ExitOK {
 		t.Fatalf("exit = %d, stderr: %s\n%s", r.code, r.stderr, r.stdout)
 	}
-	calls := h.server.CallsTo("maintenance.delete")
-	if len(calls) != 1 {
+	if calls := h.server.CallsTo("maintenance.delete"); len(calls) != 1 {
 		t.Fatalf("maintenance.delete was called %d times", len(calls))
 	}
 }
 
+func TestDirectWritesCanBeDisabled(t *testing.T) {
+	h := newHarnessWith(t, config.Bool(false), config.ScopeMaintenance)
+	maintenanceSeven(h)
+
+	// The change is refused, and the plan it produced is still there to be
+	// approved by a person: turning direct writes off is not the same as
+	// turning the tool read-only.
+	r := h.run("maintenance", "delete", "7", "--apply", "--json")
+	if r.code != errs.ExitPermission {
+		t.Fatalf("exit = %d, want %d\n%s", r.code, errs.ExitPermission, r.stdout)
+	}
+	if body := r.envelope(t)["error"].(map[string]any); body["code"] != errs.CodeWriteDisabled {
+		t.Errorf("error code = %v, want %v", body["code"], errs.CodeWriteDisabled)
+	}
+	if calls := h.server.CallsTo("maintenance.delete"); len(calls) != 0 {
+		t.Fatal("a change ran while direct writes were disabled")
+	}
+
+	r = h.run("maintenance", "delete", "7", "--json")
+	planID := r.envelope(t)["data"].(map[string]any)["plan_id"].(string)
+	r = h.run("approve", planID, "--yes", "--confirm", "weekend window", "--json")
+	if r.code != errs.ExitOK {
+		t.Fatalf("approve: exit = %d, stderr: %s\n%s", r.code, r.stderr, r.stdout)
+	}
+	if calls := h.server.CallsTo("maintenance.delete"); len(calls) != 1 {
+		t.Fatalf("maintenance.delete was called %d times", len(calls))
+	}
+}
+
+func TestWritesAreDisabledByTheEnvironment(t *testing.T) {
+	// A container is configured through its environment and a config file it
+	// does not own, so the environment has to be able to say "not here".
+	h := newHarness(t, config.ScopeMaintenance)
+	t.Setenv(config.EnvAllowWrite, "off")
+	maintenanceSeven(h)
+
+	r := h.run("maintenance", "delete", "7", "--apply", "--json")
+	if r.code != errs.ExitPermission {
+		t.Fatalf("exit = %d, want %d\n%s", r.code, errs.ExitPermission, r.stdout)
+	}
+	if calls := h.server.CallsTo("maintenance.delete"); len(calls) != 0 {
+		t.Fatal("a change ran while the environment disabled writes")
+	}
+}
+
 func TestScopeIsEnforcedAtTheCommandLine(t *testing.T) {
-	h := newHarness(t) // read-only profile
+	// Naming any scope narrows the profile to exactly those, whether or not
+	// direct writes are allowed.
+	h := newHarness(t, config.ScopeAcknowledge)
 	h.server.Reply("host.get", []any{zbxtest.Host("10", "web01", nil)})
 
 	r := h.run("maintenance", "create", "web01", "--for", "2h", "--json")
@@ -404,7 +484,7 @@ func TestRawApiCallCannotSidestepProfileScopes(t *testing.T) {
 	// The escape hatch declares itself a read, because whether it writes
 	// depends on the method it is handed. That must not let a read-only
 	// profile plan and apply a destructive method through it.
-	h := newHarness(t) // read-only profile
+	h := newHarness(t, config.ScopeAcknowledge)
 	h.server.Reply("maintenance.delete", map[string]any{"maintenanceids": []any{"7"}})
 
 	r := h.run("api", "call", "maintenance.delete", "--params", `["7"]`, "--json")
@@ -509,5 +589,81 @@ func TestVersionFallsBackToTheModuleVersion(t *testing.T) {
 	// build overrides it.
 	if cli.Version != "dev" && !strings.HasPrefix(cli.Version, "v") {
 		t.Errorf("Version = %q, want either the stamped value or a module version", cli.Version)
+	}
+}
+
+func TestHTTPWithWritesEnabledDemandsABearerToken(t *testing.T) {
+	// An HTTP endpoint with no bearer token is open to every process on the
+	// machine. That is defensible for a server that only reads, and not for
+	// one that can change Zabbix.
+	h := newHarness(t, config.ScopeMaintenance)
+	t.Setenv("ZABBIX_AI_CLI_MCP_BEARER_TOKEN", "")
+
+	r := h.run("mcp", "--http", "127.0.0.1:0", "--json")
+	if r.code != errs.ExitPermission {
+		t.Fatalf("exit = %d, want %d\n%s", r.code, errs.ExitPermission, r.stdout)
+	}
+	if !strings.Contains(r.stdout, "bearer token") {
+		t.Errorf("the refusal should say what is missing: %s", r.stdout)
+	}
+}
+
+func TestRemovingTheLastScopeDoesNotWidenTheProfile(t *testing.T) {
+	// An empty scope list means "unstated", which inherits everything while
+	// writes are allowed. Narrowing a profile to nothing must not read as
+	// that.
+	h := newHarness(t, config.ScopeMaintenance)
+
+	r := h.run("profile", "scopes", "test", "--remove", "maintenance", "--json")
+	if r.code != errs.ExitOK {
+		t.Fatalf("exit = %d\n%s", r.code, r.stdout)
+	}
+	scopes := r.envelope(t)["data"].(map[string]any)["scopes"].([]any)
+	if len(scopes) != 1 || scopes[0] != config.ScopeRead {
+		t.Fatalf("scopes = %v, want read alone", scopes)
+	}
+
+	h.server.Reply("host.get", []any{zbxtest.Host("10", "web01", nil)})
+	r = h.run("maintenance", "create", "web01", "--for", "2h", "--apply", "--json")
+	if r.code != errs.ExitPermission {
+		t.Fatalf("exit = %d, want %d\n%s", r.code, errs.ExitPermission, r.stdout)
+	}
+}
+
+func TestRemovingAnInheritedScopeNarrowsTheProfile(t *testing.T) {
+	// A profile that named none inherits them all; removing one has to write
+	// the rest down rather than silently do nothing.
+	h := newHarness(t)
+
+	r := h.run("profile", "scopes", "test", "--remove", "configuration", "--json")
+	if r.code != errs.ExitOK {
+		t.Fatalf("exit = %d\n%s", r.code, r.stdout)
+	}
+	got := map[string]bool{}
+	for _, s := range r.envelope(t)["data"].(map[string]any)["scopes"].([]any) {
+		got[s.(string)] = true
+	}
+	if got[config.ScopeConfiguration] {
+		t.Errorf("configuration was not removed: %v", got)
+	}
+	for _, want := range []string{config.ScopeMaintenance, config.ScopeAcknowledge} {
+		if !got[want] {
+			t.Errorf("scope %q was lost along with the removal: %v", want, got)
+		}
+	}
+}
+
+func TestApplyRefusesAConfirmThatNamesSomethingElse(t *testing.T) {
+	// --apply does not need the echo, but one that disagrees with the target
+	// is a mistake worth stopping on.
+	h := newHarness(t, config.ScopeMaintenance)
+	maintenanceSeven(h)
+
+	r := h.run("maintenance", "delete", "7", "--apply", "--confirm", "some other window", "--json")
+	if r.code != errs.ExitApprovalRequired {
+		t.Fatalf("exit = %d, want %d\n%s", r.code, errs.ExitApprovalRequired, r.stdout)
+	}
+	if calls := h.server.CallsTo("maintenance.delete"); len(calls) != 0 {
+		t.Fatal("the change ran despite a confirmation naming something else")
 	}
 }

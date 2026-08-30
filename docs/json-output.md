@@ -81,6 +81,7 @@ retryable, a rejected token is not. Errors never contain credentials.
 | `ZABBIX_API_ERROR` | the server reported an error |
 | `CONNECTION_FAILED`, `TIMEOUT` | the server could not be reached in time |
 | `APPROVAL_REQUIRED` | a change needs `--confirm` or a terminal approval |
+| `WRITE_DISABLED` | `allow_write` forbids applying a change directly; approve the plan instead |
 | `PLAN_EXPIRED`, `PLAN_PRECONDITION_FAILED`, `PLAN_NOT_FOUND` | the plan cannot be applied |
 | `UNSUPPORTED_ZABBIX_VERSION` | the server is too old for this operation |
 | `NO_PROFILE` | nothing is configured |

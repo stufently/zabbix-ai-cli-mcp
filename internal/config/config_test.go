@@ -131,3 +131,68 @@ func TestValidateScopesNamesThePermittedSet(t *testing.T) {
 		}
 	}
 }
+
+func TestWritesAreAllowedUnlessSaidOtherwise(t *testing.T) {
+	c := &Config{Profiles: map[string]Profile{}}
+	allowed, err := c.WriteAllowed(Profile{URL: "https://x"})
+	if err != nil {
+		t.Fatalf("WriteAllowed: %v", err)
+	}
+	if !allowed {
+		t.Error("a config that says nothing must allow writes")
+	}
+}
+
+func TestWriteSettingPrecedence(t *testing.T) {
+	root := &Config{AllowWrite: Bool(false), Profiles: map[string]Profile{}}
+	silent := Profile{URL: "https://x"}
+	loud := Profile{URL: "https://x", AllowWrite: Bool(true)}
+
+	if allowed, _ := root.WriteAllowed(silent); allowed {
+		t.Error("a profile that says nothing inherits the file-wide setting")
+	}
+	if allowed, _ := root.WriteAllowed(loud); !allowed {
+		t.Error("a profile's own setting overrides the file-wide one")
+	}
+
+	// The environment is where a container is configured, and it wins over a
+	// config file the container may not even own.
+	t.Setenv(EnvAllowWrite, "false")
+	if allowed, _ := root.WriteAllowed(loud); allowed {
+		t.Error("the environment must override the profile")
+	}
+	t.Setenv(EnvAllowWrite, "yes")
+	if allowed, _ := root.WriteAllowed(silent); !allowed {
+		t.Error("the environment must override the file-wide setting")
+	}
+}
+
+func TestUnreadableWriteSettingIsAUsageError(t *testing.T) {
+	// Guessing at "maybe" would decide a security question by coin toss.
+	t.Setenv(EnvAllowWrite, "maybe")
+	c := &Config{Profiles: map[string]Profile{}}
+	if _, err := c.WriteAllowed(Profile{URL: "https://x"}); err == nil {
+		t.Fatal("an unreadable value must be refused, not interpreted")
+	}
+}
+
+func TestUnnamedScopesFollowTheWriteSetting(t *testing.T) {
+	silent := Profile{URL: "https://x"}
+	if !GrantsScope(silent, true, ScopeMaintenance) {
+		t.Error("a profile naming no scopes inherits them all while writing is allowed")
+	}
+	if GrantsScope(silent, false, ScopeMaintenance) {
+		t.Error("a profile naming no scopes grants nothing beyond read when writing is off")
+	}
+	if !GrantsScope(silent, false, ScopeRead) {
+		t.Error("read is always granted")
+	}
+
+	named := Profile{URL: "https://x", Scopes: []string{ScopeAcknowledge}}
+	if GrantsScope(named, true, ScopeMaintenance) {
+		t.Error("naming any scope narrows the profile to exactly those")
+	}
+	if !GrantsScope(named, true, ScopeAcknowledge) {
+		t.Error("a named scope must be granted")
+	}
+}

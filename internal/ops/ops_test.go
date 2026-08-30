@@ -187,7 +187,7 @@ func TestATamperedPlanIsRefusedRatherThanApplied(t *testing.T) {
 		t.Fatalf("Seal: %v", err)
 	}
 
-	_, err = Apply(context.Background(), env, plan, ApplyOptions{Approval: safety.ApprovalTerminal})
+	_, err = Apply(context.Background(), env, plan, ApplyOptions{Mode: ApplyStored, Approval: safety.ApprovalTerminal})
 	if err == nil {
 		t.Fatal("a plan understating its own risk was applied")
 	}
@@ -213,7 +213,7 @@ func TestARawPlanIsClassifiedFromItsMethodNotItsFile(t *testing.T) {
 		t.Fatalf("Seal: %v", err)
 	}
 
-	if _, err := Apply(context.Background(), env, plan, ApplyOptions{Approval: safety.ApprovalTerminal}); err == nil {
+	if _, err := Apply(context.Background(), env, plan, ApplyOptions{Mode: ApplyStored, Approval: safety.ApprovalTerminal}); err == nil {
 		t.Fatal("a raw plan understating its own risk was applied")
 	}
 }
@@ -269,7 +269,7 @@ func TestApplyReportsBothAuditAndPlanCleanupFailures(t *testing.T) {
 		Audit:   audit,
 	}
 
-	_, err = Apply(context.Background(), env, plan, ApplyOptions{Approval: safety.ApprovalTerminal})
+	_, err = Apply(context.Background(), env, plan, ApplyOptions{Mode: ApplyStored, Approval: safety.ApprovalTerminal})
 	if err == nil {
 		t.Fatal("Apply unexpectedly succeeded")
 	}
@@ -284,5 +284,31 @@ func TestHistorySummaryShowsReadErrorInTable(t *testing.T) {
 	got := historySummary(service.Series{ReadError: "history permission denied"})
 	if !strings.Contains(got, "read error") || !strings.Contains(got, "permission denied") {
 		t.Fatalf("history summary = %q", got)
+	}
+}
+
+func TestAnUnstatedApplyModeIsRefused(t *testing.T) {
+	// Reading an unset mode as the permissive one is how a gate quietly stops
+	// being a gate.
+	env := &opspec.Env{Profile: "test", AllowWrite: true}
+	if err := CheckWriteAllowed(env, ""); err == nil {
+		t.Fatal("a change that does not say how it was authorised must be refused")
+	}
+}
+
+func TestDirectWritesAreRefusedWhenConfigurationSaysSo(t *testing.T) {
+	env := &opspec.Env{Profile: "test"}
+	if err := CheckWriteAllowed(env, ApplyDirect); err == nil {
+		t.Fatal("a direct write must be refused when the setting is off")
+	}
+	// Approving a stored plan is a person at a terminal, and it is the path
+	// the refusal above sends the caller to. Refusing it as well would leave
+	// nothing that works.
+	if err := CheckWriteAllowed(env, ApplyStored); err != nil {
+		t.Errorf("approving a stored plan must stay available: %v", err)
+	}
+	env.AllowWrite = true
+	if err := CheckWriteAllowed(env, ApplyDirect); err != nil {
+		t.Errorf("a direct write must be allowed when the setting is on: %v", err)
 	}
 }

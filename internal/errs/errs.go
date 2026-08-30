@@ -39,6 +39,7 @@ const (
 	CodeUnsupported      = "UNSUPPORTED_ZABBIX_VERSION"
 	CodeDenied           = "OPERATION_DENIED"
 	CodeScope            = "SCOPE_NOT_GRANTED"
+	CodeWriteDisabled    = "WRITE_DISABLED"
 	CodeNoProfile        = "NO_PROFILE"
 	CodePlanExpired      = "PLAN_EXPIRED"
 	CodePlanStale        = "PLAN_PRECONDITION_FAILED"

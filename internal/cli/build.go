@@ -105,7 +105,7 @@ func operationCommand(g *globals, op *opspec.Operation) *cobra.Command {
 		cmd.Flags().BoolVar(&apply, "apply", false,
 			"make the change; without this the command only describes what it would do")
 		cmd.Flags().StringVar(&confirm, "confirm", "",
-			"name the target back exactly; required for destructive changes")
+			"name the target back exactly; required when approving a stored destructive plan, checked here if given")
 	}
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
@@ -146,12 +146,16 @@ func operationCommand(g *globals, op *opspec.Operation) *cobra.Command {
 		if !apply {
 			return g.render(ops.PlanOutput(env, plan))
 		}
-		if plan.RequiresConfirmName != "" && confirm != plan.RequiresConfirmName {
-			return errs.ApprovalRequired(
-				"%s is destructive; re-run with --confirm %q to name the target back",
-				op.CommandPath(), plan.RequiresConfirmName)
+		// --apply does not require the echo, having just been given the target
+		// on the same command line. Passing one that disagrees is still a
+		// mistake worth stopping on, and scripts written against the older
+		// behaviour keep working.
+		if confirm != "" && plan.RequiresConfirmName != "" && confirm != plan.RequiresConfirmName {
+			return errs.ApprovalRequired("--confirm says %q but this change targets %q",
+				confirm, plan.RequiresConfirmName)
 		}
 		res, err := ops.Apply(ctx, env, plan, ops.ApplyOptions{
+			Mode:     ops.ApplyDirect,
 			Confirm:  confirm,
 			Approval: safety.ApprovalCLIApply,
 		})
@@ -175,7 +179,8 @@ func longHelp(op *opspec.Operation) string {
 			"add --apply to make it, or approve the stored plan from a terminal.")
 	}
 	if op.Risk == safety.RiskDestructive {
-		b.WriteString("\n\nIt is classed as destructive, so --apply must be accompanied by --confirm.")
+		b.WriteString("\n\nIt is classed as destructive. Approving a stored plan for it needs " +
+			"--confirm naming the target back; --apply does not, having just been given the target.")
 	}
 	return b.String()
 }

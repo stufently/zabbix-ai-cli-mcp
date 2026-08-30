@@ -1,8 +1,14 @@
 // Package mcp exposes the operation registry over the Model Context Protocol.
 //
 // Every tool here is a thin adapter over the same operations the CLI runs.
-// There is no second implementation of anything, and no tool can perform a
-// write: a write request produces a plan that a person approves at a terminal.
+// There is no second implementation of anything.
+//
+// Whether a client may change Zabbix is a matter of configuration. When direct
+// writes are allowed, zabbix_write applies a change in one call; when they are
+// not, zabbix_plan_create is the only way to ask for one and a person applies
+// it at a terminal. Both paths go through the same gates and the same audit
+// log, and the gate is re-checked at execution rather than trusted from what
+// was registered at startup.
 package mcp
 
 import (
@@ -23,9 +29,14 @@ import (
 // Options configure the server.
 type Options struct {
 	Version string
-	// ReadOnly withholds the planning tool entirely, so a client cannot even
-	// describe a change.
+	// ReadOnly withholds the writing and planning tools entirely, so a client
+	// cannot even describe a change. It overrides configuration.
 	ReadOnly bool
+	// AllowWrite exposes the tool that applies a change directly. It is a
+	// snapshot of the configuration taken when the server started; the gate in
+	// ops.Apply is what actually decides, so a stale snapshot cannot widen
+	// anything.
+	AllowWrite bool
 	// EnvFor builds a fresh environment per call, so a long-lived server picks
 	// up credential changes without a restart.
 	EnvFor func(ctx context.Context) (*opspec.Env, error)
@@ -38,10 +49,7 @@ func NewServer(opts Options) *sdk.Server {
 		Version: opts.Version,
 		Title:   "Zabbix",
 	}, &sdk.ServerOptions{
-		Instructions: "Task-shaped access to Zabbix. Prefer the high-level tools over zabbix_api_call: " +
-			"they bound their output and resolve names for you. Nothing here can change Zabbix. " +
-			"To request a change, call zabbix_plan_create and ask the operator to run the approve " +
-			"command it returns; you cannot approve it yourself.",
+		Instructions: instructions(opts),
 	})
 
 	for _, op := range ops.All() {
@@ -52,8 +60,47 @@ func NewServer(opts Options) *sdk.Server {
 	}
 	if !opts.ReadOnly {
 		registerPlanTools(server, opts)
+		if opts.AllowWrite {
+			registerWriteTool(server, opts)
+		}
 	}
 	return server
+}
+
+// instructions describe the server honestly for the mode it is running in. A
+// client told that nothing here writes, on a server where zabbix_write is
+// listed, would have to choose which of the two to believe.
+func instructions(opts Options) string {
+	const common = "Task-shaped access to Zabbix. Prefer the high-level tools over zabbix_api_call: " +
+		"they bound their output and resolve names for you. "
+	switch {
+	case opts.ReadOnly:
+		return common + "This server is running read-only: nothing here can change Zabbix, " +
+			"and no tool for requesting a change is offered."
+	case opts.AllowWrite:
+		return common + "Changes are permitted: zabbix_write applies one in a single call, " +
+			"and every change is recorded in an audit log the operator can read. " +
+			"Use zabbix_plan_create first when you want to show the operator what a change " +
+			"would do before making it."
+	default:
+		return common + "Nothing here can change Zabbix. To request a change, call " +
+			"zabbix_plan_create and ask the operator to run the approve command it returns; " +
+			"you cannot approve it yourself."
+	}
+}
+
+// writeRoute names the tool a caller should reach for instead, or says that
+// there is none. Suggesting a tool this server did not register would send the
+// caller somewhere that does not exist.
+func writeRoute(opts Options) string {
+	switch {
+	case opts.ReadOnly:
+		return "this server is read-only; ask the operator to make the change"
+	case opts.AllowWrite:
+		return "call zabbix_write with operation \"api.call\" instead"
+	default:
+		return "call zabbix_plan_create instead"
+	}
 }
 
 func registerRead(server *sdk.Server, opts Options, op *opspec.Operation) {
@@ -91,7 +138,7 @@ func registerRead(server *sdk.Server, opts Options, op *opspec.Operation) {
 		if op.Writes(args) {
 			return toolError(errs.Denied(
 				"%s is a write and cannot run through this tool", op.Name).
-				WithSuggestion("call zabbix_plan_create instead")), nil
+				WithSuggestion("%s", writeRoute(opts))), nil
 		}
 		env, err := opts.EnvFor(ctx)
 		if err != nil {
@@ -138,12 +185,18 @@ func registerPlanTools(server *sdk.Server, opts Options) {
 		return
 	}
 	readOnly := true
+	applyNote := "You cannot apply it yourself and there is no parameter that would let you: approval " +
+		"happens at a terminal, outside this conversation. Relay the approve command verbatim."
+	if opts.AllowWrite {
+		applyNote = "Nothing changes until it is applied. Use this to show the operator what a change " +
+			"would do; call zabbix_write to make one, or relay the approve command so the operator " +
+			"applies this exact plan."
+	}
 	server.AddTool(&sdk.Tool{
 		Name: "zabbix_plan_create",
 		Description: "Describe a change to Zabbix without making it.\n\n" +
 			"Returns a plan identifier and the exact command the operator must run to apply it. " +
-			"You cannot apply it yourself and there is no parameter that would let you: approval " +
-			"happens at a terminal, outside this conversation. Relay the approve command verbatim.\n\n" +
+			applyNote + "\n\n" +
 			"Available operations:\n" + strings.Join(summaries, "\n"),
 		InputSchema: json.RawMessage(raw),
 		// The tool itself changes nothing; it only writes a plan file.

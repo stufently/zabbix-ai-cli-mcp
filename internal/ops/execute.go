@@ -120,12 +120,54 @@ func ApproveCommand(plan *safety.Plan) string {
 	return cmd
 }
 
+// ApplyMode says how a change reached execution.
+//
+// It is a distinct type rather than a reading of the audit string, because the
+// audit string exists to describe what happened and would then also be
+// deciding what is permitted. The two jobs drift apart the moment a third
+// caller is added.
+type ApplyMode string
+
+const (
+	// ApplyDirect is a change applied by the same call that asked for it:
+	// `--apply` at a terminal, or the MCP write tool.
+	ApplyDirect ApplyMode = "direct"
+	// ApplyStored is a plan that was stored first and approved afterwards.
+	ApplyStored ApplyMode = "stored"
+)
+
 // ApplyOptions carry the authorisation for a change.
 type ApplyOptions struct {
+	// Mode says whether this is a direct application or an approved plan.
+	Mode ApplyMode
 	// Confirm is the exact object name echoed back for a destructive change.
 	Confirm string
 	// Approval records how the change was authorised, for the audit log.
 	Approval safety.Approval
+}
+
+// CheckWriteAllowed refuses a direct application when configuration has not
+// granted one.
+//
+// Approving a stored plan is never refused here: that path is a person at a
+// terminal, and it is the path this error sends the caller to.
+func CheckWriteAllowed(env *opspec.Env, mode ApplyMode) error {
+	switch mode {
+	case ApplyStored:
+		return nil
+	case ApplyDirect:
+		if env.AllowWrite {
+			return nil
+		}
+		return errs.New(errs.CodeWriteDisabled, errs.ExitPermission,
+			"direct writes are disabled for profile %q, so this change was not made", env.Profile).
+			WithSuggestion("approve the stored plan from a terminal, or set allow_write = true in the config file")
+	default:
+		// A caller that did not say how it was authorised has not been
+		// authorised. Reading an unset mode as the permissive one is how a
+		// gate quietly stops being a gate.
+		return errs.Internal("a change was submitted without saying how it was authorised")
+	}
 }
 
 // Apply executes a plan after checking every gate.
@@ -137,6 +179,9 @@ func Apply(ctx context.Context, env *opspec.Env, plan *safety.Plan, opts ApplyOp
 	op, ok := Lookup(planOperationName(plan))
 	if !ok {
 		return nil, errs.Internal("plan %s names an unknown operation %q", plan.ID, plan.Operation)
+	}
+	if err := CheckWriteAllowed(env, opts.Mode); err != nil {
+		return nil, err
 	}
 	if err := CheckScope(env, op); err != nil {
 		return nil, err
@@ -172,7 +217,11 @@ func Apply(ctx context.Context, env *opspec.Env, plan *safety.Plan, opts ApplyOp
 		return nil, errs.New(code, errs.ExitFailure, "%s", err.Error()).
 			WithSuggestion("run the original command again to build a fresh plan")
 	}
-	if plan.RequiresConfirmName != "" && opts.Confirm != plan.RequiresConfirmName {
+	// Echoing the target back is a guard against approving the wrong stored
+	// plan minutes after reading it. A direct application has just been given
+	// the target in its own arguments, so the echo would only be the caller
+	// repeating itself.
+	if plan.RequiresConfirmName != "" && opts.Mode != ApplyDirect && opts.Confirm != plan.RequiresConfirmName {
 		return nil, errs.ApprovalRequired(
 			"this change is destructive and needs the target named back exactly").
 			WithSuggestion("run: %s", ApproveCommand(plan))

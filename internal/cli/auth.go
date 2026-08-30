@@ -91,9 +91,21 @@ func loginCommand(g *globals) *cobra.Command {
 				TimeoutSeconds: existing.TimeoutSeconds,
 				CAFile:         existing.CAFile,
 				Insecure:       existing.Insecure,
+				// Logging in again refreshes a credential. Dropping the write
+				// setting here would silently widen or narrow the profile as a
+				// side effect of rotating a token.
+				AllowWrite: existing.AllowWrite,
 			}
 			if len(profile.Scopes) == 0 {
 				profile.Scopes = existing.Scopes
+			}
+
+			// Resolved before anything is stored: an unreadable setting must
+			// fail the command, not leave a profile and a token written and
+			// then report a usage error.
+			allowWrite, err := cfg.WriteAllowed(profile)
+			if err != nil {
+				return err
 			}
 
 			version, err := verifyToken(cmd.Context(), profile, token)
@@ -116,7 +128,8 @@ func loginCommand(g *globals) *cobra.Command {
 				"url":             profile.URL,
 				"zabbix_version":  version,
 				"token_stored_in": string(source),
-				"scopes":          grantedScopes(profile),
+				"scopes":          grantedScopes(profile, allowWrite),
+				"allow_write":     allowWrite,
 			}}
 			res.Meta.Returned = 1
 			res.Table = &output.Table{
@@ -126,7 +139,8 @@ func loginCommand(g *globals) *cobra.Command {
 					{"url", profile.URL},
 					{"zabbix", version},
 					{"token stored in", string(source)},
-					{"scopes", strings.Join(grantedScopes(profile), ", ")},
+					{"scopes", strings.Join(grantedScopes(profile, allowWrite), ", ")},
+					{"writes", writeMode(allowWrite)},
 				},
 			}
 			return g.render(res)
@@ -218,11 +232,20 @@ func restoreProfile(cfg *config.Config, name string, previous config.Profile, ex
 	cfg.ActiveProfile = active
 }
 
-func grantedScopes(p config.Profile) []string {
-	if len(p.Scopes) == 0 {
-		return []string{config.ScopeRead}
+// grantedScopes lists what a profile may do, read included, once the write
+// setting has been taken into account: a profile that names no scopes inherits
+// them all while direct writing is allowed.
+func grantedScopes(p config.Profile, writeAllowed bool) []string {
+	return append([]string{config.ScopeRead}, config.EffectiveScopes(p, writeAllowed)...)
+}
+
+// writeMode renders the write setting the way `auth status` and `profile show`
+// report it.
+func writeMode(allowed bool) string {
+	if allowed {
+		return "direct writes allowed"
 	}
-	return append([]string{config.ScopeRead}, p.Scopes...)
+	return "direct writes disabled; changes need a plan approved at a terminal"
 }
 
 // verifyToken proves the credential works before it is written anywhere, so a
@@ -302,12 +325,17 @@ func authCommand(g *globals) *cobra.Command {
 			if err != nil {
 				status = "failed"
 			}
+			allowWrite, werr := cfg.WriteAllowed(profile)
+			if werr != nil {
+				return werr
+			}
 			data := map[string]any{
 				"profile":        name,
 				"url":            profile.URL,
 				"token_source":   string(token.Source),
 				"status":         status,
-				"scopes":         grantedScopes(profile),
+				"scopes":         grantedScopes(profile, allowWrite),
+				"allow_write":    allowWrite,
 				"zabbix_version": version,
 			}
 			res := &output.Result{Data: data}
@@ -319,7 +347,8 @@ func authCommand(g *globals) *cobra.Command {
 					{"profile", name},
 					{"url", profile.URL},
 					{"authentication", "API token from " + string(token.Source)},
-					{"scopes", strings.Join(grantedScopes(profile), ", ")},
+					{"scopes", strings.Join(grantedScopes(profile, allowWrite), ", ")},
+					{"writes", writeMode(allowWrite)},
 					{"zabbix", version},
 					{"status", status},
 				},
@@ -348,26 +377,37 @@ func profileCommand(g *globals) *cobra.Command {
 				return err
 			}
 			type entry struct {
-				Name   string   `json:"name"`
-				URL    string   `json:"url"`
-				Active bool     `json:"active"`
-				Scopes []string `json:"scopes"`
+				Name       string   `json:"name"`
+				URL        string   `json:"url"`
+				Active     bool     `json:"active"`
+				Scopes     []string `json:"scopes"`
+				AllowWrite bool     `json:"allow_write"`
 			}
 			list := make([]entry, 0, len(cfg.Profiles))
 			rows := [][]string{}
 			for _, name := range cfg.Names() {
 				p := cfg.Profiles[name]
-				e := entry{Name: name, URL: p.URL, Active: name == cfg.ActiveProfile, Scopes: grantedScopes(p)}
+				allowWrite, werr := cfg.WriteAllowed(p)
+				if werr != nil {
+					return werr
+				}
+				e := entry{
+					Name: name, URL: p.URL, Active: name == cfg.ActiveProfile,
+					Scopes: grantedScopes(p, allowWrite), AllowWrite: allowWrite,
+				}
 				list = append(list, e)
 				marker := ""
 				if e.Active {
 					marker = "*"
 				}
-				rows = append(rows, []string{marker, name, p.URL, strings.Join(e.Scopes, ", ")})
+				rows = append(rows, []string{
+					marker, name, p.URL, strings.Join(e.Scopes, ", "),
+					boolText(allowWrite, "yes", "no"),
+				})
 			}
 			res := &output.Result{Data: list}
 			res.Meta.Returned = len(list)
-			res.Table = &output.Table{Headers: []string{"", "NAME", "URL", "SCOPES"}, Rows: rows}
+			res.Table = &output.Table{Headers: []string{"", "NAME", "URL", "SCOPES", "WRITES"}, Rows: rows}
 			return g.render(res)
 		},
 	})
@@ -389,9 +429,14 @@ func profileCommand(g *globals) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			allowWrite, err := cfg.WriteAllowed(p)
+			if err != nil {
+				return err
+			}
 			res := &output.Result{Data: map[string]any{
-				"name": name, "url": p.URL, "scopes": grantedScopes(p),
+				"name": name, "url": p.URL, "scopes": grantedScopes(p, allowWrite),
 				"token_backend": tokenBackend(p), "insecure": p.Insecure,
+				"allow_write": allowWrite,
 			}}
 			res.Meta.Returned = 1
 			res.Table = &output.Table{
@@ -399,7 +444,8 @@ func profileCommand(g *globals) *cobra.Command {
 				Rows: [][]string{
 					{"name", name},
 					{"url", p.URL},
-					{"scopes", strings.Join(grantedScopes(p), ", ")},
+					{"scopes", strings.Join(grantedScopes(p, allowWrite), ", ")},
+					{"writes", writeMode(allowWrite)},
 					{"token backend", tokenBackend(p)},
 					{"tls verification", boolText(!p.Insecure, "enabled", "disabled")},
 				},
@@ -479,7 +525,22 @@ func profileCommand(g *globals) *cobra.Command {
 			if err := config.ValidateScopes(append(append([]string{}, add...), remove...)); err != nil {
 				return err
 			}
+			allowWrite, err := cfg.WriteAllowed(p)
+			if err != nil {
+				return err
+			}
 			changed := false
+			// A profile that names no scopes inherits them all while writing is
+			// allowed, and there is nothing in the list to take away. Write the
+			// inherited set down first, so that removing one scope narrows the
+			// profile instead of silently doing nothing. The full write set is
+			// used rather than what is currently in effect: otherwise the same
+			// command would narrow or do nothing depending on a setting that
+			// can be flipped back afterwards.
+			if len(remove) > 0 && len(p.Scopes) == 0 {
+				p.Scopes = config.WriteScopes()
+				changed = true
+			}
 			for _, s := range add {
 				if s != config.ScopeRead && !p.HasScope(s) {
 					p.Scopes = append(p.Scopes, s)
@@ -495,17 +556,24 @@ func profileCommand(g *globals) *cobra.Command {
 					}
 				}
 			}
+			// Removing the last scope must leave a profile that grants nothing,
+			// not one that reads as "unstated" and inherits everything again.
+			if changed && len(p.Scopes) == 0 {
+				p.Scopes = []string{config.ScopeRead}
+			}
 			if changed {
 				cfg.Profiles[args[0]] = p
 				if err := config.Save(cfg); err != nil {
 					return err
 				}
 			}
-			res := &output.Result{Data: map[string]any{"profile": args[0], "scopes": grantedScopes(p)}}
+			res := &output.Result{Data: map[string]any{
+				"profile": args[0], "scopes": grantedScopes(p, allowWrite),
+			}}
 			res.Meta.Returned = 1
 			res.Table = &output.Table{
 				Headers: []string{"PROFILE", "SCOPES"},
-				Rows:    [][]string{{args[0], strings.Join(grantedScopes(p), ", ")}},
+				Rows:    [][]string{{args[0], strings.Join(grantedScopes(p, allowWrite), ", ")}},
 			}
 			return g.render(res)
 		},

@@ -2,7 +2,64 @@
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `allow_write`, one setting that decides whether a change may be applied by the
+  call that asked for it. It goes in the config file, either at the top level or
+  inside a `[profiles.x]` block, and `ZABBIX_AI_CLI_MCP_ALLOW_WRITE` overrides
+  both. **It defaults to on.** Set it to `false` for the previous behaviour,
+  where every change waits for `zabbix-ai-cli-mcp approve` at a terminal.
+- `zabbix_write`, an MCP tool that applies a change in one call. It takes the
+  same `operation` and `params` as `zabbix_plan_create`, is offered only where
+  `allow_write` permits it, and re-reads the setting at execution so that
+  configuration tightened after the server started is still obeyed. The change
+  is audited as authorised by `mcp-write`, distinct from a person running
+  `--apply`.
+- `WRITE_DISABLED`, the error code for a direct write the configuration forbids.
+  It names the approval path rather than failing blankly.
+- `profile show`, `profile list`, `auth status` and `login` now report whether
+  direct writes are allowed.
+
+### Changed
+
+- **Breaking:** a profile that names no `scopes` is no longer read-only. While
+  `allow_write` is on — the default — it grants every scope, because a default
+  of "allowed" that permits nothing reads as broken. A profile that names any
+  scope is still held to exactly those, so pin a profile down by listing its
+  scopes, or set `allow_write = false`. Existing installations that relied on an
+  empty `scopes` list to keep a profile read-only must now say so explicitly.
+- `--apply` no longer requires `--confirm` for a destructive change: the target
+  was named on the same command line, so echoing it back was the caller
+  repeating itself. Approving a *stored* destructive plan still requires it,
+  because that plan is read some time after it was written.
+- `profile scopes --remove` on a profile that named no scopes now writes the
+  inherited set down before removing, so the removal narrows the profile instead
+  of silently doing nothing. Removing the last scope leaves `scopes = ["read"]`
+  rather than an empty list, which would have read as "unstated" and inherited
+  everything back.
+- `--confirm` is still checked when given alongside `--apply`: it is no longer
+  required, but one that names a different target refuses rather than being
+  ignored, so scripts written against the older behaviour keep their guard.
+- Logging in again preserves a profile's `allow_write`, rather than dropping it
+  as a side effect of rotating a token.
+- The MCP server's instructions, tool descriptions and the `zabbix-ai-cli-mcp`
+  help text no longer claim that nothing here can change Zabbix. What they say
+  now follows the mode the server is actually running in.
+
+### Security
+
+- An MCP server that can write refuses to start on HTTP without a bearer token,
+  loopback included. Without one, every process on the machine could change
+  Zabbix through it — defensible for a read-only endpoint, not for this. Run it
+  `--read-only`, or set `allow_write = false`, if that was the intent.
+- `--read-only` now withholds `zabbix_write` as well as the planning tools, and
+  overrides the configuration in both directions.
+- An unreadable `ZABBIX_AI_CLI_MCP_ALLOW_WRITE` is an error rather than a guess:
+  a security question is not settled by interpreting "maybe". It is read before
+  `login` stores anything, so a bad value cannot leave a profile half-written.
+- Applying a change without stating how it was authorised is refused. An unset
+  mode used to read as the permissive one, which is how a gate quietly stops
+  being a gate.
 
 ## [0.2.0] — 2026-08-26
 

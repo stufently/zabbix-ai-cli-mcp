@@ -17,8 +17,9 @@ func plansCommand(g *globals) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plans",
 		Short: "Inspect changes that have been described but not made",
-		Long: "A plan is created whenever something asks for a change without authorising it, " +
-			"which is what every request over MCP does. Plans expire after " + safety.DefaultTTL.String() + ".",
+		Long: "A plan is created whenever a change is described rather than made: a command run " +
+			"without --apply, an agent calling zabbix_plan_create, or any change at all where " +
+			"allow_write is off. Plans expire after " + safety.DefaultTTL.String() + ".",
 	}
 
 	cmd.AddCommand(&cobra.Command{
@@ -126,6 +127,7 @@ func approveCommand(g *globals) *cobra.Command {
 				}
 			}
 			res, err := ops.Apply(cmd.Context(), env, plan, ops.ApplyOptions{
+				Mode:     ops.ApplyStored,
 				Confirm:  confirm,
 				Approval: safety.ApprovalTerminal,
 			})

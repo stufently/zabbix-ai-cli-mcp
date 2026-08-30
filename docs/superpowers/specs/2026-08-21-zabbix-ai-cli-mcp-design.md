@@ -1,7 +1,8 @@
 # zabbix-ai-cli-mcp — Design
 
 Date: 2026-08-21
-Status: approved
+Status: approved; the mandatory plan-and-approve gate it describes was replaced
+by the `allow_write` setting on 2026-08-30 (see CHANGELOG.md)
 
 ## 1. Purpose
 

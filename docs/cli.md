@@ -54,21 +54,25 @@ Nothing has changed yet.
 To apply it: zabbix-ai-cli-mcp approve pl_cc89d2e87d15
 ```
 
-Add `--apply` to make the change in the same command. Destructive commands also
-require `--confirm` naming the target back exactly:
+Add `--apply` to make the change in the same command:
 
 ```bash
 zabbix-ai-cli-mcp maintenance create "ms*" --for 2h --apply
 zabbix-ai-cli-mcp maintenance extend 42 --by 24h --apply
 zabbix-ai-cli-mcp maintenance expire 42 --apply
-zabbix-ai-cli-mcp maintenance delete 42 --apply --confirm "weekend window"
+zabbix-ai-cli-mcp maintenance delete 42 --apply
 
 zabbix-ai-cli-mcp events acknowledge 757474 --operations ack,message --message "investigating"
-zabbix-ai-cli-mcp events acknowledge 757474 --operations close --apply --confirm 757474
+zabbix-ai-cli-mcp events acknowledge 757474 --operations close --apply
 
-zabbix-ai-cli-mcp triggers disable 35246 --apply --confirm 35246
+zabbix-ai-cli-mcp triggers disable 35246 --apply
 zabbix-ai-cli-mcp triggers enable 35246 --apply
 ```
+
+`--apply` needs `allow_write` to permit it; where it does not, the command
+refuses with `WRITE_DISABLED` and leaves the plan for `approve`. `--confirm` is
+not needed here — the target was named on the same command line — but it is
+still required to approve a stored destructive plan.
 
 Acknowledge operations are named, never numbered: `ack`, `message`, `close`,
 `severity`, `unack`, `suppress`, `unsuppress`. The underlying bitmask is easy to
@@ -76,7 +80,9 @@ get wrong, and getting it wrong closes a problem that was meant to be commented 
 
 ## Approving
 
-A change requested over MCP arrives as a stored plan:
+A change described but not made — by `--apply` being unavailable, by an agent
+calling `zabbix_plan_create`, or by running the command without `--apply` —
+arrives as a stored plan:
 
 ```bash
 zabbix-ai-cli-mcp plans list
@@ -87,7 +93,16 @@ zabbix-ai-cli-mcp reject pl_cc89d2e87d15
 
 `approve` prints the plan and asks before doing anything. Plans expire after
 fifteen minutes. `--yes` skips the prompt and is required when stdin is not a
-terminal, so a non-interactive approval is always deliberate.
+terminal, so a non-interactive approval is always deliberate. A destructive plan
+also needs `--confirm` naming the target back exactly, because the plan is being
+read some time after it was written:
+
+```bash
+zabbix-ai-cli-mcp approve pl_cc89d2e87d15 --confirm "weekend window"
+```
+
+Approving works whatever `allow_write` says: it is the path a refused `--apply`
+points at.
 
 ## The escape hatch
 

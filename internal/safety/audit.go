@@ -17,6 +17,11 @@ const (
 	ApprovalCLIApply Approval = "cli-apply"
 	// ApprovalTerminal is a human running `approve` against a stored plan.
 	ApprovalTerminal Approval = "approve"
+	// ApprovalMCPWrite is an agent applying a change through the MCP write
+	// tool, which configuration has allowed. Recorded distinctly from
+	// ApprovalCLIApply so the log says whether a person or a model was at the
+	// other end.
+	ApprovalMCPWrite Approval = "mcp-write"
 )
 
 // AuditEntry is one executed write.

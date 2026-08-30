@@ -28,12 +28,12 @@ Durations are written the way people say them: `30m`, `2h`, `7d`, `2w`.
 
 **Nothing happens yet.** The command prints a plan showing exactly which hosts
 matched, and stops. A pattern that matches nothing is an error, not a quietly
-smaller window — check the host count in the plan before approving.
+smaller window — read the host count in the plan before going further.
 
-**You do not apply it.** `--apply` exists for a person working in their own
-terminal; reaching for it from an agent session — over MCP or through a shell —
-defeats the point of the plan. Relay the `approve_command` from the plan
-verbatim and let the operator run it.
+**Whether you may apply it depends on the installation.** Where `zabbix_write`
+is offered, the change is yours to make: check the matched hosts first, make it,
+and say plainly what you did. Where it is not, `zabbix_plan_create` is the only
+route — relay the `approve_command` verbatim and let the operator run it.
 
 ## Data collection
 
@@ -48,11 +48,12 @@ zabbix-ai-cli-mcp maintenance expire 42     # ends now, keeps the record
 zabbix-ai-cli-mcp maintenance delete 42     # removes it entirely
 ```
 
-Prefer `expire`. `delete` is destructive and needs the window named back exactly.
+Prefer `expire`. `delete` is destructive: it removes the record of the window
+along with the window, so nothing later explains why alerts were quiet.
 
 ## Do not
 
 - Do not open an indefinite window "to stop the noise". Give it the shortest
   duration that covers the work; a forgotten window is how an outage hides.
-- Do not report a window as created before it has been approved. Until then,
-  nothing has changed.
+- Do not report a window as created while it is only planned. A plan is a
+  description; until it is applied, nothing has changed.

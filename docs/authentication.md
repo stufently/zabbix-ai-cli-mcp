@@ -70,6 +70,7 @@ than trusted.
 
 ```toml
 active_profile = "prod"
+allow_write = true
 
 [profiles.prod]
 url = "https://zabbix.example.com"
@@ -79,14 +80,27 @@ timeout_seconds = 30
 [profiles.staging]
 url = "https://stage.example.com"
 ca_file = "/etc/ssl/private-ca.pem"
+allow_write = false
 ```
+
+## Writes
+
+`allow_write` decides whether a change may be applied by the call that asked for
+it. Absent means allowed. A profile's own value overrides the file-wide one, and
+`ZABBIX_AI_CLI_MCP_ALLOW_WRITE` overrides both.
+
+With it off, a write is described and stored as a plan, and a person applies it
+with `zabbix-ai-cli-mcp approve`. What each profile currently allows is in
+`profile show` and `auth status`. The reasoning is in
+[the security model](security.md#the-write-setting).
 
 ## Scopes
 
-A profile grants `read` implicitly and nothing else. Planning a write needs the
-matching scope:
+Scopes bound what a profile may change. A profile that names some is held to
+exactly those; a profile that names none may do whatever `allow_write` permits.
+Reads never need a scope.
 
-| Scope | Permits planning |
+| Scope | Permits |
 | --- | --- |
 | `read` | nothing; reads need no scope |
 | `maintenance` | maintenance windows |
@@ -97,6 +111,10 @@ matching scope:
 zabbix-ai-cli-mcp profile scopes prod --add maintenance
 zabbix-ai-cli-mcp profile scopes prod --remove configuration
 ```
+
+Removing a scope from a profile that named none writes the inherited set down
+first, so that the removal narrows the profile instead of silently doing
+nothing.
 
 Scopes sit behind the permissions of the Zabbix token itself, which remains the
 last real boundary. A read-only token cannot be widened by granting a scope.

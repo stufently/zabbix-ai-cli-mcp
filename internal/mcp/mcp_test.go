@@ -30,6 +30,21 @@ type harness struct {
 
 func newHarness(t *testing.T, readOnly bool, scopes ...string) *harness {
 	t.Helper()
+	return newHarnessWith(t, readOnly, false, false, scopes...)
+}
+
+// newWritableHarness runs the server the way configuration allowing direct
+// writes runs it.
+func newWritableHarness(t *testing.T, scopes ...string) *harness {
+	t.Helper()
+	return newHarnessWith(t, false, true, true, scopes...)
+}
+
+// newHarnessWith separates what the server was told at startup from what the
+// environment answers per call, so the case where configuration was tightened
+// after the tool list was built can be exercised.
+func newHarnessWith(t *testing.T, readOnly, registerWrite, envAllowsWrite bool, scopes ...string) *harness {
+	t.Helper()
 	srv := zbxtest.New(t, "7.4.10")
 	stateDir := t.TempDir()
 	plans, err := safety.NewStore(stateDir)
@@ -42,15 +57,17 @@ func newHarness(t *testing.T, readOnly bool, scopes ...string) *harness {
 	}
 
 	server := zmcp.NewServer(zmcp.Options{
-		Version:  "test",
-		ReadOnly: readOnly,
+		Version:    "test",
+		ReadOnly:   readOnly,
+		AllowWrite: registerWrite,
 		EnvFor: func(context.Context) (*opspec.Env, error) {
 			return &opspec.Env{
-				Service: service.New(api.New(srv.URL, testToken)),
-				Profile: "test",
-				Config:  config.Profile{URL: srv.URL, Scopes: scopes},
-				Plans:   plans,
-				Audit:   audit,
+				Service:    service.New(api.New(srv.URL, testToken)),
+				Profile:    "test",
+				Config:     config.Profile{URL: srv.URL, Scopes: scopes},
+				Plans:      plans,
+				Audit:      audit,
+				AllowWrite: envAllowsWrite,
 			}, nil
 		},
 	})
@@ -135,7 +152,7 @@ func TestToolSurfaceIsSmallAndNamespaced(t *testing.T) {
 	}
 }
 
-func TestNoToolCanChangeZabbix(t *testing.T) {
+func TestNoToolChangesZabbixWhenDirectWritesAreOff(t *testing.T) {
 	h := newHarness(t, false, config.ScopeMaintenance)
 	res, err := h.session.ListTools(context.Background(), nil)
 	if err != nil {
@@ -237,9 +254,99 @@ func TestPlanToolIsAbsentInReadOnlyMode(t *testing.T) {
 		t.Fatalf("ListTools: %v", err)
 	}
 	for _, tool := range res.Tools {
-		if strings.HasPrefix(tool.Name, "zabbix_plan") {
+		if strings.HasPrefix(tool.Name, "zabbix_plan") || tool.Name == "zabbix_write" {
 			t.Errorf("read-only mode still exposes %q", tool.Name)
 		}
+	}
+}
+
+func TestWriteToolAppearsOnlyWhenConfigurationAllowsIt(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		harness  func(*testing.T, ...string) *harness
+		expected bool
+	}{
+		{"writes allowed", func(t *testing.T, s ...string) *harness { return newWritableHarness(t, s...) }, true},
+		{"writes disabled", func(t *testing.T, s ...string) *harness { return newHarness(t, false, s...) }, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.harness(t, config.ScopeMaintenance)
+			res, err := h.session.ListTools(context.Background(), nil)
+			if err != nil {
+				t.Fatalf("ListTools: %v", err)
+			}
+			found := false
+			planning := false
+			for _, tool := range res.Tools {
+				switch tool.Name {
+				case "zabbix_write":
+					found = true
+					if tool.Annotations != nil && tool.Annotations.ReadOnlyHint {
+						t.Error("zabbix_write must not be annotated read-only")
+					}
+				case "zabbix_plan_create":
+					planning = true
+				}
+			}
+			if found != tc.expected {
+				t.Errorf("zabbix_write present = %v, want %v", found, tc.expected)
+			}
+			// Describing a change without making it stays available either
+			// way: it is how an agent shows an operator what it intends.
+			if !planning {
+				t.Error("zabbix_plan_create must be offered regardless of the write setting")
+			}
+		})
+	}
+}
+
+func TestWriteToolAppliesTheChangeAndAuditsIt(t *testing.T) {
+	h := newWritableHarness(t, config.ScopeMaintenance)
+	h.server.Reply("host.get", []any{zbxtest.Host("10", "web01", nil)})
+	h.server.Reply("maintenance.create", map[string]any{"maintenanceids": []any{"1"}})
+
+	res := h.call(t, "zabbix_write", map[string]any{
+		"operation": "maintenance.create",
+		"params":    map[string]any{"hosts": []any{"web01"}, "for": "2h"},
+	})
+	if res.IsError {
+		t.Fatalf("zabbix_write failed: %s", text(t, res))
+	}
+	if calls := h.server.CallsTo("maintenance.create"); len(calls) != 1 {
+		t.Fatalf("maintenance.create was called %d times", len(calls))
+	}
+	if !strings.Contains(text(t, res), "applied") {
+		t.Errorf("result does not report the change: %s", text(t, res))
+	}
+	planID := envelope(t, res)["data"].(map[string]any)["plan_id"].(string)
+	entry, err := h.audit.Find(planID)
+	if err != nil {
+		t.Fatalf("audit: %v", err)
+	}
+	if entry == nil {
+		t.Fatal("the change was not written to the audit log")
+	}
+	if entry.Approval != safety.ApprovalMCPWrite {
+		t.Errorf("approval = %q, want %q", entry.Approval, safety.ApprovalMCPWrite)
+	}
+}
+
+func TestWriteToolRecheckesTheSettingAtExecution(t *testing.T) {
+	// The tool list was built at startup. Configuration tightened afterwards
+	// must still be obeyed, rather than the stale registration deciding.
+	h := newHarnessWith(t, false, true, false, config.ScopeMaintenance)
+	h.server.Reply("host.get", []any{zbxtest.Host("10", "web01", nil)})
+	h.server.Reply("maintenance.create", map[string]any{"maintenanceids": []any{"1"}})
+
+	res := h.call(t, "zabbix_write", map[string]any{
+		"operation": "maintenance.create",
+		"params":    map[string]any{"hosts": []any{"web01"}, "for": "2h"},
+	})
+	if !res.IsError || !strings.Contains(text(t, res), "WRITE_DISABLED") {
+		t.Fatalf("expected a refusal, got: %s", text(t, res))
+	}
+	if calls := h.server.CallsTo("maintenance.create"); len(calls) != 0 {
+		t.Fatal("the change reached Zabbix after the setting was turned off")
 	}
 }
 

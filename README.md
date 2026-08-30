@@ -61,20 +61,47 @@ tool absorbs them behind commands that describe the task instead of the endpoint
 | `unreachable` | Monitored hosts Zabbix cannot poll, with the error it recorded |
 | `metrics latest` / `history` | Values with the right history type, human units and `min/avg/max` |
 | `maintenance` | Open, extend, end or remove windows, with host patterns like `ms*` |
-| `api call` | The escape hatch, under the same approval rules |
+| `api call` | The escape hatch, under the same rules |
 
 ## Safety
 
-Read operations run immediately. Nothing else does.
+Read operations always run immediately. Whether anything else does is one
+setting, `allow_write`, and it is **on by default**.
 
-| Caller | Read | Write | Destructive |
-| --- | --- | --- | --- |
-| CLI, a person at a terminal | immediate | plan, then `--apply` | plan, then `--apply --confirm <exact name>` |
-| MCP, an agent | immediate | plan, then `approve` at a terminal | plan, then `approve` at a terminal |
+```toml
+# ~/.config/zabbix-ai-cli-mcp/config.toml
+allow_write = true            # the default; omit the key and you get this
 
-There is no MCP parameter that applies a change, and adding one would not help:
-a confirmation an agent can send is a confirmation prompt injection can send.
-The approval lives at a terminal, outside the model's context.
+[profiles.prod]
+url = "https://zabbix.example.com"
+allow_write = false           # this one profile is an exception
+```
+
+**If you are not sure, set `allow_write = false`.** It costs one command per
+change and it is the right default for an installation you cannot afford to
+have an agent surprise you in. A profile override beats the file-wide setting,
+and `ZABBIX_AI_CLI_MCP_ALLOW_WRITE` beats both — that is how a container is
+told, without owning the config file.
+
+| Caller | `allow_write = true` | `allow_write = false` |
+| --- | --- | --- |
+| CLI, a person at a terminal | `--apply` makes the change | plan, then `approve` |
+| MCP, an agent | `zabbix_write` makes the change | plan, then `approve` at a terminal |
+
+With writes off, no tool and no flag applies anything: a change is described,
+and a person runs `zabbix-ai-cli-mcp approve <plan-id>` in their own terminal.
+A confirmation an agent could send would be a confirmation prompt injection
+could send, so none is offered — the approval lives outside the model's context.
+
+With writes on, the agent applies the change itself and every change lands in
+an audit log with the profile, the parameters, the objects touched and whether
+a person or a model asked for it. `zabbix-ai-cli-mcp mcp --read-only` refuses
+both paths regardless of the setting, and an HTTP endpoint that can write
+refuses to start without a bearer token.
+
+Everything else holds either way: a profile's `scopes` still bound what it may
+touch, the risk registry still refuses methods that hand out credentials or run
+code, and a plan is still re-checked against live Zabbix before it executes.
 
 ```
 $ zabbix-ai-cli-mcp maintenance create "ms*" --for 2h
@@ -141,10 +168,12 @@ in shell history and in the process list; pipe it in instead:
 printf %s "$TOKEN" | zabbix-ai-cli-mcp login --profile prod --url https://zabbix.example.com --token-stdin
 ```
 
-Writes are off until a profile is granted the scope for them:
+A profile that names no scopes may do anything the write setting allows.
+Naming any scope narrows it to exactly those:
 
 ```bash
 zabbix-ai-cli-mcp profile scopes prod --add maintenance
+zabbix-ai-cli-mcp profile show prod        # what it may do, writes included
 ```
 
 See [docs/authentication.md](docs/authentication.md) for the resolution order and
@@ -198,10 +227,12 @@ Any client that speaks stdio takes the same two fields — command
 wants HTTP instead:
 
 ```bash
-zabbix-ai-cli-mcp mcp --http 127.0.0.1:8000
+zabbix-ai-cli-mcp mcp --http 127.0.0.1:8000 --bearer-token "$MCP_TOKEN"
 ```
 
-It refuses a routable address unless you pass `--allow-remote` together with a
+A server that can write refuses to start on HTTP without a bearer token, even on
+loopback: without one, every process on the machine could change Zabbix through
+it. It refuses a routable address unless you pass `--allow-remote` together with a
 bearer token, because an unauthenticated MCP endpoint is an unauthenticated
 route into Zabbix. See [docs/mcp.md](docs/mcp.md).
 
@@ -217,7 +248,7 @@ docker run --rm -i \
 
 ## MCP tools
 
-Fourteen tools, not two hundred. A large tool surface costs an agent context
+Fifteen tools, not two hundred. A large tool surface costs an agent context
 before it has done anything, and most of it is never called.
 
 ```
@@ -226,11 +257,13 @@ zabbix_problem            zabbix_metrics_history     zabbix_maintenance_list
 zabbix_hosts              zabbix_alert_why           zabbix_api_call
 zabbix_host_status        zabbix_resolve             zabbix_plan_create
 zabbix_host_investigate                              zabbix_plan_status
+                                                     zabbix_write
 ```
 
-Write operations do not get one tool each. `zabbix_plan_create` takes an
-`operation` enum generated from the same registry the CLI is built from, so the
-tool surface does not grow as operations are added.
+Write operations do not get one tool each. `zabbix_write` and
+`zabbix_plan_create` take an `operation` enum generated from the same registry
+the CLI is built from, so the tool surface does not grow as operations are
+added. `zabbix_write` is offered only where `allow_write` permits it.
 
 ## JSON contract
 
@@ -290,10 +323,15 @@ tools, instead of the model guessing at `curl` calls against the JSON-RPC API.
 
 ### Can an AI agent change my Zabbix through this?
 
-Not on its own. Read operations run immediately. Every write produces a plan and
-stops. Applying that plan is a command a person runs in their own terminal:
-`zabbix-ai-cli-mcp approve <plan-id>`. There is no MCP parameter that applies
-anything, and a test fails the build if one is ever added.
+That is yours to decide, and the setting is `allow_write`. Left alone it is on,
+and an agent can open a maintenance window or acknowledge an event itself —
+every change audited, and bounded by the profile's scopes and the risk
+registry.
+
+Set `allow_write = false` and it cannot. A write then produces a plan and
+stops; applying it is a command you run in your own terminal,
+`zabbix-ai-cli-mcp approve <plan-id>`. No MCP parameter applies anything in
+that mode, and a test fails the build if one is ever added.
 
 ### Does it send my monitoring data to an AI provider?
 
@@ -319,13 +357,13 @@ A thin wrapper hands the agent the API's sharp edges: `problem.get` without
 hosts, `history.get` silently returning nothing for float items, `lastvalue`
 frozen at `"0"`. Those produce confident wrong answers rather than errors. This
 tool answers questions — "what is broken", "why did this alert not arrive" — and
-absorbs the traps behind them. It also ships fourteen tools rather than two
+absorbs the traps behind them. It also ships fifteen tools rather than two
 hundred, because a large tool surface spends an agent's context before it does
 any work.
 
 ### Can I still call the raw Zabbix API?
 
-Yes, through `api call`, under the same approval rules. Methods that hand out
+Yes, through `api call`, under the same rules as everything else. Methods that hand out
 credentials or execute code are refused outright — including the long way round,
 such as creating a script and having an action run it.
 

@@ -10,10 +10,14 @@ are all generated from `internal/opspec` + `internal/ops`. A new capability is a
 registry entry, not three parallel implementations. If you find yourself editing
 a cobra command and an MCP tool to say the same thing, stop — that is the bug.
 
-**No MCP tool may apply a change.** Writes produce a plan; a person applies it
-from a terminal with `zabbix-ai-cli-mcp approve <plan-id>`. Never add an `apply`,
-`confirm` or `force` parameter to an MCP tool. A test in `internal/mcp` fails the
-build if one appears, and that test is not the obstacle — it is the design.
+**Applying a change is a configuration decision, not a parameter.** Whether an
+MCP client may write is `allow_write`, read from the config file, the profile or
+the environment. Never add an `apply`, `confirm` or `force` parameter to an MCP
+tool: a confirmation an agent can send is a confirmation prompt injection can
+send. A test in `internal/mcp` fails the build if one appears, and that test is
+not the obstacle — it is the design. `zabbix_write` is the one tool that
+applies, it takes no such parameter, and it re-checks the setting at execution
+rather than trusting what was registered at startup.
 
 See [docs/architecture.md](docs/architecture.md) for why.
 

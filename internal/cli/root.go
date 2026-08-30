@@ -113,6 +113,10 @@ func (g *globals) buildEnv(ctx context.Context) (*opspec.Env, error) {
 	if err != nil {
 		return nil, err
 	}
+	allowWrite, err := cfg.WriteAllowed(profile)
+	if err != nil {
+		return nil, err
+	}
 	if profile.URL == "" {
 		return nil, errs.New(errs.CodeNoProfile, errs.ExitAuth,
 			"profile %q has no Zabbix URL", name).
@@ -169,11 +173,12 @@ func (g *globals) buildEnv(ctx context.Context) (*opspec.Env, error) {
 		return nil, err
 	}
 	return &opspec.Env{
-		Service: service.New(client),
-		Profile: name,
-		Config:  profile,
-		Plans:   plans,
-		Audit:   audit,
+		Service:    service.New(client),
+		Profile:    name,
+		Config:     profile,
+		Plans:      plans,
+		Audit:      audit,
+		AllowWrite: allowWrite,
 	}, nil
 }
 
@@ -228,7 +233,7 @@ func newRootCommand(g *globals) *cobra.Command {
 		Use:   "zabbix-ai-cli-mcp",
 		Short: "AI-first CLI, MCP server and skills for Zabbix",
 		Long: "zabbix-ai-cli-mcp turns Zabbix into a small set of task-shaped commands that an AI agent " +
-			"can be trusted to run: bounded output, stable JSON, and no change without approval.\n\n" +
+			"can be trusted to run: bounded output, stable JSON, and every change audited.\n\n" +
 			"The tool never contacts a language model. An agent decides, this program executes, Zabbix monitors.",
 		SilenceUsage:  true,
 		SilenceErrors: true,

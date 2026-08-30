@@ -113,8 +113,8 @@ model to decide what to do cannot be reasoned about by the model that called it.
 No graphs, trends or report generation. The usage record that shaped this scope
 contains not one request for them.
 
-No per-tool write operations over MCP. `zabbix_plan_create` takes an operation
-enum, so the tool surface stays fixed as operations are added.
+No per-tool write operations over MCP. `zabbix_write` and `zabbix_plan_create`
+take an operation enum, so the tool surface stays fixed as operations are added.
 
 ## Build
 

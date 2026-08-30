@@ -45,6 +45,10 @@ type Profile struct {
 	TokenFile string `toml:"token_file,omitempty"`
 	// Keyring stores the token in the OS keyring when true.
 	Keyring bool `toml:"keyring,omitempty"`
+	// AllowWrite overrides the file-wide setting for this profile. Nil means
+	// "not stated here", which is why it is a pointer: a plain bool cannot
+	// tell an absent key from an explicit false.
+	AllowWrite *bool `toml:"allow_write,omitempty"`
 }
 
 // HasScope reports whether the profile grants scope. Read is always granted.
@@ -60,10 +64,61 @@ func (p Profile) HasScope(scope string) bool {
 	return false
 }
 
+// EffectiveScopes reports the scopes a profile grants once direct writing is
+// taken into account.
+//
+// A profile that names its scopes gets exactly those, whether or not writing
+// is allowed. A profile that names none inherits every scope while writing is
+// allowed, because the alternative is a default of "allowed" that permits
+// nothing and reads as broken.
+func EffectiveScopes(p Profile, writeAllowed bool) []string {
+	if len(p.Scopes) > 0 {
+		// Read is implicit and carries no permission, so a profile listing
+		// only "read" is a profile that has been narrowed to nothing. That is
+		// how a profile says "explicitly none" in a file where an absent key
+		// means "unstated".
+		out := make([]string, 0, len(p.Scopes))
+		for _, s := range p.Scopes {
+			if s != ScopeRead {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	if !writeAllowed {
+		return nil
+	}
+	return WriteScopes()
+}
+
+// WriteScopes lists every scope that permits a change.
+func WriteScopes() []string {
+	return []string{ScopeAcknowledge, ScopeMaintenance, ScopeConfiguration}
+}
+
+// GrantsScope reports whether a profile may act in scope, given whether direct
+// writing is allowed. Read is always granted.
+func GrantsScope(p Profile, writeAllowed bool, scope string) bool {
+	if scope == "" || scope == ScopeRead {
+		return true
+	}
+	for _, s := range EffectiveScopes(p, writeAllowed) {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
 // Config is the whole configuration file.
 type Config struct {
-	ActiveProfile string             `toml:"active_profile"`
-	Profiles      map[string]Profile `toml:"profiles"`
+	ActiveProfile string `toml:"active_profile"`
+	// AllowWrite decides whether a change may be applied directly, without a
+	// stored plan being approved at a terminal. Absent means allowed: the
+	// tool is useful out of the box, and an installation that wants the
+	// stricter posture says so.
+	AllowWrite *bool              `toml:"allow_write,omitempty"`
+	Profiles   map[string]Profile `toml:"profiles"`
 
 	path string
 }
@@ -115,14 +170,54 @@ func (c *Config) Resolve(explicit string) (string, Profile, error) {
 	return name, p, nil
 }
 
+// WriteAllowed reports whether changes may be applied directly against this
+// profile, without a stored plan being approved at a terminal.
+//
+// The environment wins over the profile, which wins over the file-wide
+// setting, which defaults to allowed. A container is configured through its
+// environment and a config file it may not even own, so the environment has to
+// be able to say "not here" without the file agreeing.
+func (c *Config) WriteAllowed(p Profile) (bool, error) {
+	if v, ok := os.LookupEnv(EnvAllowWrite); ok {
+		b, err := parseBoolSetting(v)
+		if err != nil {
+			return false, errs.Usage("%s is set to %q, which is not a true/false value", EnvAllowWrite, v)
+		}
+		return b, nil
+	}
+	if p.AllowWrite != nil {
+		return *p.AllowWrite, nil
+	}
+	if c.AllowWrite != nil {
+		return *c.AllowWrite, nil
+	}
+	return true, nil
+}
+
+// parseBoolSetting accepts the spellings a person actually types in a shell
+// rather than only the ones Go's strconv knows.
+func parseBoolSetting(v string) (bool, error) {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "t", "true", "y", "yes", "on":
+		return true, nil
+	case "0", "f", "false", "n", "no", "off":
+		return false, nil
+	}
+	return false, fmt.Errorf("not a boolean")
+}
+
+// Bool boxes a literal for the pointer-valued settings.
+func Bool(v bool) *bool { return &v }
+
 // Environment variables. Documented in docs/authentication.md.
 const (
-	EnvURL       = "ZABBIX_AI_CLI_MCP_URL"
-	EnvToken     = "ZABBIX_AI_CLI_MCP_TOKEN"
-	EnvTokenFile = "ZABBIX_AI_CLI_MCP_TOKEN_FILE"
-	EnvProfile   = "ZABBIX_AI_CLI_MCP_PROFILE"
-	EnvConfigDir = "ZABBIX_AI_CLI_MCP_CONFIG_DIR"
-	EnvStateDir  = "ZABBIX_AI_CLI_MCP_STATE_DIR"
+	EnvURL        = "ZABBIX_AI_CLI_MCP_URL"
+	EnvToken      = "ZABBIX_AI_CLI_MCP_TOKEN"
+	EnvTokenFile  = "ZABBIX_AI_CLI_MCP_TOKEN_FILE"
+	EnvProfile    = "ZABBIX_AI_CLI_MCP_PROFILE"
+	EnvConfigDir  = "ZABBIX_AI_CLI_MCP_CONFIG_DIR"
+	EnvStateDir   = "ZABBIX_AI_CLI_MCP_STATE_DIR"
+	EnvAllowWrite = "ZABBIX_AI_CLI_MCP_ALLOW_WRITE"
 )
 
 const appName = "zabbix-ai-cli-mcp"

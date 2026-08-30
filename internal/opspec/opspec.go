@@ -116,13 +116,23 @@ type Env struct {
 	Config  config.Profile
 	Plans   *safety.Store
 	Audit   *safety.AuditLog
+	// AllowWrite is the resolved answer to "may a change be applied without a
+	// stored plan being approved at a terminal". It is computed once, from the
+	// environment, the profile and the file-wide setting, so that every gate
+	// reads the same value rather than each consulting the config again.
+	AllowWrite bool
 	// Limit is the caller's default result bound, applied when an operation
 	// declares no limit of its own.
 	Limit int
 }
 
 // HasScope reports whether the active profile grants the operation's scope.
-func (e *Env) HasScope(scope string) bool { return e.Config.HasScope(scope) }
+//
+// A profile that names no scopes inherits them all while direct writing is
+// allowed; naming any scope narrows the profile to exactly those.
+func (e *Env) HasScope(scope string) bool {
+	return config.GrantsScope(e.Config, e.AllowWrite, scope)
+}
 
 // Args holds validated parameter values.
 type Args struct {
