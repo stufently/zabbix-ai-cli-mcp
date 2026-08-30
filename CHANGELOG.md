@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.3.0] — 2026-08-30
+
 ### Added
 
 - `allow_write`, one setting that decides whether a change may be applied by the

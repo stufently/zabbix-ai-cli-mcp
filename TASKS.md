@@ -4,11 +4,15 @@
 
 Writes no longer have to be planned and approved. One setting, `allow_write`,
 decides; it defaults to on, and `false` restores the previous behaviour. Over
-MCP that adds `zabbix_write`. What changed is in CHANGELOG.md.
+MCP that adds `zabbix_write`. Released as 0.3.0; what changed is in CHANGELOG.md.
 
-Remaining: rebuild `bin/zabbix-ai-cli-mcp` (Codex reads it directly), and
-decide how the Claude entry moves off the pinned `ghcr.io/...:0.2.0` image,
-which does not have this.
+Verified against the live Zabbix 7.4.10: a window created and deleted directly,
+both audited, no approval step.
+
+Remaining: the `zabbix` entry in `~/.claude.json` is repinned from
+`ghcr.io/stufently/zabbix-ai-cli-mcp:0.2.0` to `:0.3.0` once the release
+workflow has published it. Codex already runs `bin/zabbix-ai-cli-mcp`, rebuilt,
+and needs only a restart.
 
 ## COMPLETED — 2026-08-21 — zabbix-ai-cli-mcp v0.1 and cutover
 
