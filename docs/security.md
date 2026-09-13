@@ -49,12 +49,44 @@ keep database passwords and API keys, and this tool's output goes into a model's
 context.
 
 Writes are also refused, whatever scope a profile holds, for the objects whose
-configuration is code or invokes code: `script`, `action`, `mediatype`, `item`,
+configuration is code or invokes code: `script`, `action`, `mediatype`,
 `itemprototype`, `discoveryrule`, `hostprototype`, `httptest`, `webscenario`,
 `connector`, `autoregistration`, `proxy` and `proxygroup`. Refusing
 `script.execute` while allowing `script.create` plus `action.create` would only
 lengthen the road to running a command on a monitored host, not close it. Reading
 any of them stays available.
+
+### Items are judged by their type
+
+`item` is the exception, because the object is two different things under one
+name: `item.create` is how a host gets an ordinary agent check, and also how a
+script item that runs JavaScript on the Zabbix server appears. Refusing the
+method took the ordinary case with it, and building a monitoring item is one of
+the most common reasons to reach for the escape hatch at all.
+
+So an item write is read before it is judged. These types are refused, because
+collecting them runs something: external check (10), database monitor (11), SSH
+agent (13), Telnet agent (14), HTTP agent (19), script (20) and browser (21).
+Everything else — agent, agent (active), trapper, internal, simple check, SNMP,
+calculated, dependent, JMX, IPMI — reads a value that something else already
+produces, and is allowed under the `configuration` scope.
+
+Three details follow from reading params rather than a method name, and each one
+fails closed:
+
+- **A write must state `type` explicitly.** On update Zabbix keeps the stored
+  type, and for a script or SSH item the `params` field *is* its code — editing
+  it without naming the type would be editing code sight unseen. An omitted type
+  is refused rather than assumed, on create and on update alike.
+- **`item.copy` is refused.** It duplicates items this call never names, so their
+  types are not in the params to check: one script item copied to twenty hosts
+  would be twenty new executions the gate never saw.
+- **A batch is refused whole.** Params may be one object or a list; one
+  executing type anywhere in the list refuses the call.
+
+`item.delete` stays an ordinary destructive write: it carries no type and
+executes nothing. `itemprototype` remains refused outright — a prototype's type
+cannot be checked against the items discovery will later create from it.
 
 ## The write setting
 

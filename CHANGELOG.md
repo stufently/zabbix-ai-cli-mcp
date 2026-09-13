@@ -2,7 +2,24 @@
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- Item writes are judged by the item's `type` instead of being refused by method
+  name. `item.create`, `item.update`, `item.massupdate` and `item.delete` now run
+  under the `configuration` scope, while the types whose collection executes
+  something stay refused: external check (10), database monitor (11), SSH agent
+  (13), Telnet agent (14), HTTP agent (19), script (20) and browser (21).
+
+  The blanket refusal was too coarse in both directions: it stopped an ordinary
+  agent check — the most common reason to reach for the escape hatch — while
+  leaving the reason for it, that *some* item types run code, unexpressed in the
+  gate itself. The new gate reads the params it is given, and fails closed three
+  ways: a write must state `type` explicitly (on update Zabbix keeps the stored
+  type, and for a script item the `params` field is its code), `item.copy` is
+  refused because the items it duplicates are not named in the params, and one
+  executing type anywhere in a batch refuses the whole batch. `itemprototype`
+  remains refused outright, since a prototype's type says nothing about the items
+  discovery will create from it.
 
 ## [0.3.0] — 2026-08-30
 
