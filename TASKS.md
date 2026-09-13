@@ -6,10 +6,28 @@
 version recorded by the toolchain is applied in `init` only when no stamp
 arrived. What was wrong and why it stayed unnoticed is in CHANGELOG.md.
 
-Verified: `make build` reports `v0.4.0-2-g28b1b52-dirty` where it used to report
-`dev`; `make stamp-check` gets its sentinel back; putting the function
-initialiser back turned both `stamp-check` and a unit test red, and flipping the
-precedence in `resolveVersion` turned the unit test red.
+Verified: `make build` reports the tag where it used to report `dev`;
+`make stamp-check` gets its sentinel back from both halves; putting the function
+initialiser back turned `stamp-check` and a unit test red, and flipping the
+precedence in `resolveVersion` turned the unit test and the VCS half of
+`stamp-check` red. The released image reports `v0.4.1`.
+
+Review: Codex found nothing. agy's six findings held up three times — the check
+could not see the two version sources being consulted in the wrong order, the
+test accepted a leaked `(devel)`, and the `VERSION` argument sat in front of
+`go mod download` — and all three are fixed here. The other three were not
+defects: the image tags and the registry entry were always the v-less version
+and are unchanged, `-X …=dev` being indistinguishable from an unstamped build is
+the intent, and the dead `--build-arg` it named was already gone.
+
+Cutover on this host:
+
+- `~/.claude.json` repinned from `:0.4.0` to `:0.4.1`, with
+  `~/.claude.json.bak-20260913-123148` alongside it for rollback.
+- Codex runs `bin/zabbix-ai-cli-mcp` directly; rebuilt with plain `make build`,
+  which now reports `v0.4.1` without the hand-rolled build the last cutover
+  needed.
+- **Takes effect on the next Claude Code and Codex restart.**
 
 ## COMPLETED — 2026-09-13 — item writes are judged by type; released as 0.4.0
 
