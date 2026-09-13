@@ -15,9 +15,11 @@
   stamped.
 
   `scripts/check-version-stamp.sh` (`make stamp-check`, and a step in CI) builds
-  with a sentinel and no VCS information and fails if the sentinel does not come
-  back out. Without it the defect is invisible: the toolchain's own record fills
-  in and looks exactly like a working flag.
+  with a sentinel twice — once with no VCS information, once with it — and fails
+  if the sentinel does not come back out. Without it the defect is invisible: the
+  toolchain's own record fills in and looks exactly like a working flag. The
+  second build is what catches the two sources being consulted in the wrong
+  order, which the first cannot see because it leaves one of them empty.
 
 ### Changed
 
@@ -25,7 +27,8 @@
   with the leading `v` stripped, so a binary keeps reporting `v0.4.1` — the shape
   of the tag, and of what `git describe` gives a local build. Image tags and the
   registry entry are unchanged. The `VERSION` build argument the release image
-  never declared is gone.
+  never declared is gone, and the one the source image does use now sits after
+  `go mod download` instead of in front of it.
 
 - Releases are published on the tag instead of being left as drafts
   (`release.draft: false`). The repository is public, and three finished drafts

@@ -5,7 +5,6 @@
 # Build with the latest stable Go release.
 FROM golang:1.27.0-alpine AS build
 
-ARG VERSION=dev
 WORKDIR /src
 
 # Dependencies resolve in their own layer so source edits do not re-download.
@@ -13,6 +12,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+
+# Declared here, not above: an argument in front of "go mod download" is a cache
+# key for the dependency layer, so every new version would re-download modules.
+ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags "-s -w -X github.com/stufently/zabbix-ai-cli-mcp/internal/cli.Version=${VERSION}" \
     -o /out/zabbix-ai-cli-mcp ./cmd/zabbix-ai-cli-mcp

@@ -26,13 +26,15 @@ func TestResolveVersionPrefersTheStampedValue(t *testing.T) {
 	}
 }
 
-// A build that carries no VCS information must report nothing rather than the
-// placeholder: resolveVersion tells the two apart, so a "dev" leaking out of
-// here would look like a stamp and shadow a real one.
-func TestVersionFromBuildIsEmptyWithoutAUsableModuleVersion(t *testing.T) {
-	// The test binary itself is built from the module directory, so the
-	// toolchain records either nothing or "(devel)" — never a release version.
-	if got := versionFromBuild(); got == unstampedVersion {
-		t.Fatalf("versionFromBuild() = %q, want an empty string or a module version", got)
+// Only a usable module version may come out of here. Both placeholders would be
+// read as a stamp by resolveVersion and would shadow a real one: "dev" directly,
+// and "(devel)" — what the toolchain records for a build with no version — by
+// being reported to the user as if it were the version.
+func TestVersionFromBuildReportsNoPlaceholder(t *testing.T) {
+	got := versionFromBuild()
+	for _, placeholder := range []string{unstampedVersion, "(devel)"} {
+		if got == placeholder {
+			t.Fatalf("versionFromBuild() = %q, want an empty string or a module version", got)
+		}
 	}
 }
