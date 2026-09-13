@@ -22,9 +22,9 @@ GO = docker run --rm -u $(UID):$(GID) \
 	-e GOCACHE=/cache/build -e GOMODCACHE=/cache/mod -e GOFLAGS=-buildvcs=false \
 	-w /src $(GO_IMAGE)
 
-.PHONY: all build test race vet fmt fmt-check lint tidy docker clean install help
+.PHONY: all build test race vet fmt fmt-check stamp-check lint tidy docker clean install help
 
-all: fmt-check vet test build
+all: fmt-check vet test stamp-check build
 
 ## build: compile a Linux binary into ./bin using Docker
 build:
@@ -55,6 +55,11 @@ fmt:
 fmt-check:
 	@out=$$($(GO) gofmt -l .); \
 	if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
+
+## stamp-check: fail if the linker's version stamp no longer reaches the binary
+stamp-check:
+	@mkdir -p $(CACHE)
+	$(GO) sh scripts/check-version-stamp.sh
 
 ## lint: run golangci-lint
 lint:

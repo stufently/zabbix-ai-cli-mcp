@@ -29,18 +29,46 @@ import (
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
 )
 
+// unstampedVersion is what a build that was told nothing reports.
+const unstampedVersion = "dev"
+
 // Version is stamped at build time by the release build.
 //
-// A binary from "go install" carries no ldflags, so it would report "dev" —
-// which is the install path the README recommends first. The module version
-// the toolchain recorded is used instead when nothing was stamped.
-var Version = versionFromBuild()
+// It has to stay a plain constant: "-X" replaces the initial value of a string
+// variable, and an initialiser that calls a function runs at package init and
+// overwrites whatever the linker put there. Until 0.4.1 this read
+// "var Version = versionFromBuild()", which made every "-X …cli.Version=…" in
+// the Makefile and in .goreleaser.yaml dead — the released binaries happened to
+// report the right version only because the toolchain also stamps the module
+// version from the VCS tag, and "make build" (which passes -buildvcs=false, so
+// there is no such stamp) reported "dev".
+var Version = unstampedVersion
 
+// init fills the version in for a build that carried no stamp: "go install" —
+// the install path the README recommends first — passes no ldflags, so the
+// module version the toolchain recorded is used instead.
+func init() {
+	Version = resolveVersion(Version, versionFromBuild())
+}
+
+// resolveVersion picks what to report: a stamped value always wins, and the
+// module version recorded by the toolchain is the fallback.
+func resolveVersion(stamped, fromBuild string) string {
+	if stamped != unstampedVersion {
+		return stamped
+	}
+	if fromBuild == "" {
+		return unstampedVersion
+	}
+	return fromBuild
+}
+
+// versionFromBuild returns the module version the toolchain recorded, or an
+// empty string when the build carries no usable one.
 func versionFromBuild() string {
-	const unstamped = "dev"
 	info, ok := debug.ReadBuildInfo()
 	if !ok || info.Main.Version == "" || info.Main.Version == "(devel)" {
-		return unstamped
+		return ""
 	}
 	return info.Main.Version
 }

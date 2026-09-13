@@ -1,5 +1,16 @@
 # Work log
 
+## COMPLETED — 2026-09-13 — the version stamp works again; released as 0.4.1
+
+`internal/cli.Version` is a plain constant the linker can replace, and the module
+version recorded by the toolchain is applied in `init` only when no stamp
+arrived. What was wrong and why it stayed unnoticed is in CHANGELOG.md.
+
+Verified: `make build` reports `v0.4.0-2-g28b1b52-dirty` where it used to report
+`dev`; `make stamp-check` gets its sentinel back; putting the function
+initialiser back turned both `stamp-check` and a unit test red, and flipping the
+precedence in `resolveVersion` turned the unit test red.
+
 ## COMPLETED — 2026-09-13 — item writes are judged by type; released as 0.4.0
 
 The blanket refusal of every `item.*` write is gone. `ClassifyCall` reads the
@@ -26,17 +37,6 @@ Cutover on this host:
 - **Takes effect on the next Claude Code and Codex restart.**
 - The drafts v0.2.0–v0.4.0 were published and v0.4.0 marked as the latest
   release; goreleaser no longer drafts (owner's call, 13.09.2026).
-
-## OPEN — the `-X` ldflags that stamp the version are inert
-
-`internal/cli.Version` is initialised by `versionFromBuild()`, and the linker's
-`-X` value is overwritten by that initialiser at package init. Both the Makefile
-and `.goreleaser.yaml` still pass `-X …cli.Version=…`, so those flags do nothing.
-Released artefacts report the right version only because the Go toolchain stamps
-`info.Main.Version` from the VCS tag — which is also why `make build` reports
-`dev`: the Makefile builds with `-buildvcs=false`. Fix is either to drop the dead
-flags or to make `Version` a plain literal with the build-info lookup as a
-fallback in `init()`.
 
 ## COMPLETED — 2026-08-30 — allow_write replaces the mandatory approval gate
 

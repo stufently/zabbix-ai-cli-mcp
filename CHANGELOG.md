@@ -1,8 +1,31 @@
 # Changelog
 
-## [Unreleased]
+## [0.4.1] — 2026-09-13
+
+### Fixed
+
+- A binary reports the version its build stamped. `internal/cli.Version` was
+  initialised by a function call, and package init ran over whatever the linker
+  had put there, so every `-X …cli.Version=…` — in the Makefile, in
+  `.goreleaser.yaml` and in the Dockerfile — was dead. Released binaries looked
+  right only because the Go toolchain also records the module version from the
+  VCS tag; `make build`, which passes `-buildvcs=false` and therefore has no such
+  record, reported `dev`. `Version` is now a plain constant that the linker can
+  replace, and the module version is applied in `init` only when nothing was
+  stamped.
+
+  `scripts/check-version-stamp.sh` (`make stamp-check`, and a step in CI) builds
+  with a sentinel and no VCS information and fails if the sentinel does not come
+  back out. Without it the defect is invisible: the toolchain's own record fills
+  in and looks exactly like a working flag.
 
 ### Changed
+
+- The release build stamps the tag (`{{.Tag}}`) instead of goreleaser's version
+  with the leading `v` stripped, so a binary keeps reporting `v0.4.1` — the shape
+  of the tag, and of what `git describe` gives a local build. Image tags and the
+  registry entry are unchanged. The `VERSION` build argument the release image
+  never declared is gone.
 
 - Releases are published on the tag instead of being left as drafts
   (`release.draft: false`). The repository is public, and three finished drafts

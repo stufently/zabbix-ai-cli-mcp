@@ -11,7 +11,10 @@ builds:
     env: [CGO_ENABLED=0]
     flags: [-trimpath]
     ldflags:
-      - -s -w -X github.com/stufently/zabbix-ai-cli-mcp/internal/cli.Version={{.Version}}
+      # .Tag, not .Version: goreleaser strips the leading v, and the
+      # reported version should keep the shape of the tag it was cut from
+      # (which is also what git describe gives a local build).
+      - -s -w -X github.com/stufently/zabbix-ai-cli-mcp/internal/cli.Version={{.Tag}}
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
 
@@ -31,7 +34,9 @@ dockers:
       - "ghcr.io/stufently/zabbix-ai-cli-mcp:latest"
     dockerfile: Dockerfile.release
     build_flag_templates:
-      - "--build-arg=VERSION={{ .Version }}"
+      # No VERSION build-arg: Dockerfile.release copies a binary that already
+      # carries the stamp, and docker warns about an argument nothing declares.
+      # The source-building Dockerfile keeps its own ARG for `make docker`.
       # The registry checks this label against the published server name, so an
       # image nobody can trace back to the manifest is rejected.
       - '--label=io.modelcontextprotocol.server.name=io.github.stufently/zabbix-ai-cli-mcp'

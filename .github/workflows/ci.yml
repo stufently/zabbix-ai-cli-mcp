@@ -37,6 +37,11 @@ jobs:
       - name: Tests
         run: go test ./...
 
+      # A stamp the linker cannot reach is invisible in an ordinary build: the
+      # module version the toolchain records fills in and looks right.
+      - name: The version stamp reaches the binary
+        run: sh scripts/check-version-stamp.sh
+
       # The race detector matters here: aggregates fan out across goroutines
       # and write into a shared slice.
       - name: Tests with the race detector
