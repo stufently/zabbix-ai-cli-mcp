@@ -1,7 +1,9 @@
 package safety
 
 import (
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -85,6 +87,7 @@ var writeObjects = map[string]string{
 	"host":             ScopeConfiguration,
 	"hostgroup":        ScopeConfiguration,
 	"hostinterface":    ScopeConfiguration,
+	"item":             ScopeConfiguration,
 	"trigger":          ScopeConfiguration,
 	"triggerprototype": ScopeConfiguration,
 	"template":         ScopeConfiguration,
@@ -115,11 +118,14 @@ var writeObjects = map[string]string{
 // none of it belongs behind a generic escape hatch, so they are refused
 // outright rather than left behind a scope a profile might hold.
 var executableObjects = map[string]string{
-	"script":           "a script is a command definition, and an action can run it without script.execute ever being called",
-	"action":           "action operations run scripts and remote commands on hosts",
-	"mediatype":        "a script media type executes a program on the Zabbix server for every alert it sends",
-	"item":             "SSH, Telnet, script and browser items execute code every time they collect",
-	"itemprototype":    "item prototypes become items, and items can execute code",
+	"script":    "a script is a command definition, and an action can run it without script.execute ever being called",
+	"action":    "action operations run scripts and remote commands on hosts",
+	"mediatype": "a script media type executes a program on the Zabbix server for every alert it sends",
+	// "item" is deliberately absent: an item is refused by its type, not by
+	// its method name — see executableItemTypes and ClassifyCall. Blanket
+	// refusal also cost the ordinary case, and building a monitoring item is
+	// the most common reason to reach for the escape hatch at all.
+	"itemprototype":    "item prototypes become items, and items can execute code, and a prototype's type cannot be checked against the items discovery will create",
 	"discoveryrule":    "a discovery rule creates items from its prototypes",
 	"hostprototype":    "host prototypes carry the items discovery creates",
 	"httptest":         "a web scenario makes the Zabbix server issue requests of the author's choosing",
@@ -128,6 +134,118 @@ var executableObjects = map[string]string{
 	"autoregistration": "autoregistration decides what happens to every new host that appears",
 	"proxy":            "a proxy collects for the hosts assigned to it, and its address decides where they report",
 	"proxygroup":       "proxy groups decide which proxy collects for which hosts",
+}
+
+// executableItemTypes are the item `type` values whose collection runs code, or
+// makes the server fetch something of the author's choosing. The numbers are
+// Zabbix's own, from the `type` field of the item object.
+//
+// Everything else — agent, agent (active), trapper, internal, simple check,
+// SNMP, calculated, dependent, JMX, IPMI — reads a value that something else
+// already produces, and is the whole point of letting items be written here.
+var executableItemTypes = map[int]string{
+	10: "an external check item runs a script on the Zabbix server for every collection",
+	11: "a database monitor item runs SQL of the author's choosing",
+	13: "an SSH agent item runs a command on the monitored host",
+	14: "a Telnet agent item runs a command on the monitored host",
+	19: "an HTTP agent item makes the Zabbix server issue requests of the author's choosing",
+	20: "a script item runs JavaScript on the Zabbix server",
+	21: "a browser item drives a headless browser from the Zabbix server",
+}
+
+// ClassifyCall is ClassifyMethod plus what the call actually carries.
+//
+// The method name alone decides nothing for items: `item.create` is how a host
+// gets an ordinary agent check, and also how a script item that runs JavaScript
+// on the server appears. The `type` field is what separates them, so the gate
+// reads it — and refuses when it is absent, because a type nobody named cannot
+// be shown to be harmless. Callers that have no params (listing the accepted
+// methods, for instance) stay on ClassifyMethod.
+func ClassifyCall(method string, params any) Classification {
+	class := ClassifyMethod(method)
+	if !class.Allowed {
+		return class
+	}
+	object, action, ok := strings.Cut(strings.ToLower(strings.TrimSpace(method)), ".")
+	if !ok || object != "item" || action == "get" {
+		return class
+	}
+	// Deleting an item carries no type and executes nothing; it stays a
+	// destructive write like any other.
+	if destructiveActions[action] {
+		return class
+	}
+	if reason := refuseItemWrite(action, params); reason != "" {
+		return Classification{Allowed: false, Reason: reason}
+	}
+	return class
+}
+
+// refuseItemWrite returns the reason an item write is refused, or "" to allow it.
+func refuseItemWrite(action string, params any) string {
+	// item.copy duplicates items this call never names: their types live in the
+	// installation, not in these params, so one script item copied to twenty
+	// hosts would be twenty new executions this gate never saw.
+	if action == "copy" {
+		return "item.copy duplicates items whose type this call cannot see, and some item types execute code"
+	}
+	objects, ok := itemObjects(params)
+	if !ok {
+		return "an item write must pass an object, or a list of objects, so that each item's type can be read"
+	}
+	for _, obj := range objects {
+		raw, present := obj["type"]
+		if !present {
+			// On update Zabbix keeps the stored type, and for an SSH, script or
+			// browser item the `params` field IS its code: editing it without
+			// naming the type would be editing code sight unseen. On create an
+			// omitted type is not a default worth guessing either.
+			return "an item write must state `type` explicitly: without it this call could create or edit an item whose type executes code (item.get shows the current type)"
+		}
+		itemType, ok := asItemType(raw)
+		if !ok {
+			return "item `type` must be a number, the way Zabbix defines it"
+		}
+		if reason, executable := executableItemTypes[itemType]; executable {
+			return fmt.Sprintf("item type %d is refused: %s", itemType, reason)
+		}
+	}
+	return ""
+}
+
+// itemObjects normalises the two shapes Zabbix accepts — one object or an array
+// of them — into a slice. Anything else is not an item write.
+func itemObjects(params any) ([]map[string]any, bool) {
+	switch v := params.(type) {
+	case map[string]any:
+		return []map[string]any{v}, true
+	case []any:
+		out := make([]map[string]any, 0, len(v))
+		for _, e := range v {
+			obj, ok := e.(map[string]any)
+			if !ok {
+				return nil, false
+			}
+			out = append(out, obj)
+		}
+		return out, len(out) > 0
+	}
+	return nil, false
+}
+
+// asItemType reads Zabbix's `type` field, which arrives as a JSON number from
+// this program and as a string from most of Zabbix's own output.
+func asItemType(raw any) (int, bool) {
+	switch v := raw.(type) {
+	case float64:
+		return int(v), v == float64(int(v))
+	case int:
+		return v, true
+	case string:
+		n, err := strconv.Atoi(strings.TrimSpace(v))
+		return n, err == nil
+	}
+	return 0, false
 }
 
 var writeActions = map[string]bool{

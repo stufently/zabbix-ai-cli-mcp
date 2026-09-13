@@ -311,7 +311,10 @@ func authoritativeRiskAndScope(op *opspec.Operation, plan *safety.Plan) (safety.
 		return op.Risk, op.Scope, nil
 	}
 	method, _ := plan.Params["method"].(string)
-	class := safety.ClassifyMethod(method)
+	// The same gate the plan passed when it was written, applied again from
+	// the stored params: a plan may have been sealed by a build whose registry
+	// had no item type check, and it is this build that would run it.
+	class := safety.ClassifyCall(method, plan.Params["params"])
 	if !class.Allowed {
 		reason := class.Reason
 		if reason == "" {

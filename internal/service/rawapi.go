@@ -24,7 +24,7 @@ type RawResult struct {
 // high-level commands do not cover is otherwise done with curl and a token
 // copied out of a container, which leaves no audit trail at all.
 func (s *Service) RawRead(ctx context.Context, method string, params any) (*RawResult, error) {
-	class := safety.ClassifyMethod(method)
+	class := safety.ClassifyCall(method, params)
 	if !class.Allowed {
 		return nil, DeniedMethodError(method, class)
 	}
@@ -45,7 +45,7 @@ func (s *Service) RawRead(ctx context.Context, method string, params any) (*RawR
 
 // PlanRawCall describes a raw write without performing it.
 func (s *Service) PlanRawCall(ctx context.Context, profile, method string, params any) (*safety.Plan, error) {
-	class := safety.ClassifyMethod(method)
+	class := safety.ClassifyCall(method, params)
 	if !class.Allowed {
 		return nil, DeniedMethodError(method, class)
 	}

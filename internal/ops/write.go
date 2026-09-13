@@ -250,7 +250,15 @@ func apiCall() *opspec.Operation {
 		},
 		Refuses: func(args *opspec.Args) error {
 			method := args.String("method")
-			class := safety.ClassifyMethod(method)
+			// Params are parsed here only to classify: an item write is
+			// refused by its type rather than by its method name. Malformed
+			// JSON is left to the call itself, which reports it properly; a
+			// nil here simply means the gate sees no type and says so.
+			params, err := service.ParseParams(args.String("params"))
+			if err != nil {
+				params = nil
+			}
+			class := safety.ClassifyCall(method, params)
 			if class.Allowed {
 				return nil
 			}

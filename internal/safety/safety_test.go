@@ -1,6 +1,7 @@
 package safety
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -215,12 +216,16 @@ func TestClassifyMethod(t *testing.T) {
 		// an action told to run it, or an SSH item told to collect it.
 		{"script.create", "", false},
 		{"action.create", "", false},
-		{"item.create", "", false},
 		{"itemprototype.update", "", false},
 		{"mediatype.update", "", false},
 		{"connector.create", "", false},
 		{"httptest.update", "", false},
 		{"proxy.update", "", false},
+		// An item is judged by its type instead (see TestClassifyCallItemType),
+		// so the method itself is an ordinary configuration write.
+		{"item.create", RiskWrite, true},
+		{"item.update", RiskWrite, true},
+		{"item.delete", RiskDestructive, true},
 		// Reading them stays available.
 		{"script.get", RiskRead, true},
 		{"item.get", RiskRead, true},
@@ -441,5 +446,97 @@ func TestListStillReportsACorruptPlan(t *testing.T) {
 	}
 	if _, err := store.List(); err == nil {
 		t.Error("a corrupt plan file must be reported, not skipped")
+	}
+}
+
+// TestClassifyCallItemType covers the gate that replaced the blanket refusal of
+// item writes: the method name is the same for an agent check and for a script
+// item that runs JavaScript on the server, so the type decides.
+func TestClassifyCallItemType(t *testing.T) {
+	obj := func(fields string) any {
+		var v any
+		if err := json.Unmarshal([]byte(fields), &v); err != nil {
+			t.Fatalf("fixture is not JSON: %v", err)
+		}
+		return v
+	}
+
+	cases := []struct {
+		name    string
+		method  string
+		params  any
+		allowed bool
+	}{
+		// The types that only read a value somebody else produced.
+		{"agent", "item.create", obj(`{"hostid":"1","key_":"a","type":0}`), true},
+		{"agent active", "item.create", obj(`{"hostid":"1","key_":"a","type":7}`), true},
+		{"trapper", "item.create", obj(`{"hostid":"1","key_":"a","type":2}`), true},
+		{"calculated", "item.create", obj(`{"hostid":"1","key_":"a","type":15}`), true},
+		{"dependent", "item.create", obj(`{"hostid":"1","key_":"a","type":18}`), true},
+		// Zabbix hands numbers back as strings, and callers copy them back in.
+		{"type as string", "item.create", obj(`{"hostid":"1","key_":"a","type":"7"}`), true},
+		{"list of ordinary items", "item.create", obj(`[{"type":7},{"type":0}]`), true},
+
+		// The types that execute something on every collection.
+		{"external check", "item.create", obj(`{"type":10}`), false},
+		{"database monitor", "item.create", obj(`{"type":11}`), false},
+		{"ssh", "item.create", obj(`{"type":13}`), false},
+		{"telnet", "item.create", obj(`{"type":14}`), false},
+		{"http agent", "item.create", obj(`{"type":19}`), false},
+		{"script", "item.create", obj(`{"type":20}`), false},
+		{"browser", "item.create", obj(`{"type":21}`), false},
+		{"script as string", "item.create", obj(`{"type":"20"}`), false},
+		// One bad entry in a batch refuses the batch, not just that entry.
+		{"script hidden in a list", "item.create", obj(`[{"type":7},{"type":20}]`), false},
+
+		// A type nobody named cannot be shown to be harmless. On update the
+		// stored type stays as it is, and for a script item the params field is
+		// its code — so editing it unnamed would be editing code sight unseen.
+		{"create without type", "item.create", obj(`{"hostid":"1","key_":"a"}`), false},
+		{"update without type", "item.update", obj(`{"itemid":"1","params":"return 1"}`), false},
+		{"update with ordinary type", "item.update", obj(`{"itemid":"1","type":7,"delay":"5m"}`), true},
+		{"massupdate without type", "item.massupdate", obj(`{"itemids":["1"],"status":1}`), false},
+		{"massupdate with ordinary type", "item.massupdate", obj(`{"itemids":["1"],"type":0}`), true},
+		{"type not a number", "item.create", obj(`{"type":"agent"}`), false},
+		{"params not an object", "item.create", obj(`"nonsense"`), false},
+		{"empty list", "item.create", obj(`[]`), false},
+		{"nil params", "item.create", nil, false},
+
+		// Copying names no types at all: the items it duplicates live in the
+		// installation, so one script item could reach twenty more hosts.
+		{"copy", "item.copy", obj(`{"itemids":["1"],"hostids":["2"]}`), false},
+
+		// Deleting executes nothing, and reading is unaffected.
+		{"delete", "item.delete", obj(`["1","2"]`), true},
+		{"get with a script filter", "item.get", obj(`{"filter":{"type":20}}`), true},
+
+		// Objects other than item are untouched by the gate.
+		{"host update", "host.update", obj(`{"hostid":"1","status":1}`), true},
+		{"item prototype stays refused", "itemprototype.create", obj(`{"type":7}`), false},
+		{"script.create stays refused", "script.create", obj(`{"name":"x"}`), false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := ClassifyCall(c.method, c.params)
+			if got.Allowed != c.allowed {
+				t.Fatalf("ClassifyCall(%q, %v) allowed = %v, want %v (reason %q)",
+					c.method, c.params, got.Allowed, c.allowed, got.Reason)
+			}
+			if !got.Allowed && got.Reason == "" {
+				t.Fatalf("ClassifyCall(%q) refused without a reason", c.method)
+			}
+		})
+	}
+}
+
+// TestClassifyCallMatchesClassifyMethodWhenRefused keeps the two entry points
+// from drifting: a method the registry refuses outright must stay refused
+// whatever params accompany it.
+func TestClassifyCallMatchesClassifyMethodWhenRefused(t *testing.T) {
+	for _, m := range []string{"script.execute", "task.create", "user.login", "nonsense.frobnicate"} {
+		if ClassifyCall(m, map[string]any{"type": 7}).Allowed {
+			t.Fatalf("ClassifyCall(%q) allowed a method ClassifyMethod refuses", m)
+		}
 	}
 }
