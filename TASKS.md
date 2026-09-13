@@ -1,5 +1,41 @@
 # Work log
 
+## COMPLETED — 2026-09-13 — item writes are judged by type; released as 0.4.0
+
+The blanket refusal of every `item.*` write is gone. `ClassifyCall` reads the
+params it is handed and refuses only the types whose items execute something
+(10, 11, 13, 14, 19, 20, 21), plus a write that does not state `type`, plus
+`item.copy`, plus any batch containing one of those types. Details and reasoning
+are in CHANGELOG.md and docs/security.md; the trigger was that an ordinary agent
+check — the common case — could not be created at all.
+
+Verified before the release: 32 subtests in `TestClassifyCallItemType`, three
+mutations (dropping HTTP agent 19 from the executing set, allowing a missing
+`type`, ignoring the array shape of a batch) each turned the suite red, and the
+live stand refused a script and an SSH item while a trapper item was created and
+deleted through the same binary.
+
+Cutover on this host:
+
+- `~/.claude.json` repinned from `ghcr.io/stufently/zabbix-ai-cli-mcp:0.3.0` to
+  `:0.4.0`, with `~/.claude.json.bak-20260913-024617` alongside it for rollback.
+- Codex runs `bin/zabbix-ai-cli-mcp` directly; rebuilt at the tag (v0.4.0).
+- The released image was probed afterwards: a script item (type 20) and an
+  `item.update` without `type` are refused, an agent item plans normally, and the
+  probe plan was rejected — no scratch objects left in Zabbix.
+- **Takes effect on the next Claude Code and Codex restart.**
+
+## OPEN — the `-X` ldflags that stamp the version are inert
+
+`internal/cli.Version` is initialised by `versionFromBuild()`, and the linker's
+`-X` value is overwritten by that initialiser at package init. Both the Makefile
+and `.goreleaser.yaml` still pass `-X …cli.Version=…`, so those flags do nothing.
+Released artefacts report the right version only because the Go toolchain stamps
+`info.Main.Version` from the VCS tag — which is also why `make build` reports
+`dev`: the Makefile builds with `-buildvcs=false`. Fix is either to drop the dead
+flags or to make `Version` a plain literal with the build-info lookup as a
+fallback in `init()`.
+
 ## COMPLETED — 2026-08-30 — allow_write replaces the mandatory approval gate
 
 Writes no longer have to be planned and approved. One setting, `allow_write`,
