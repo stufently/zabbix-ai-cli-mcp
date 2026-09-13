@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Releases are published on the tag instead of being left as drafts
+  (`release.draft: false`). The repository is public, and three finished drafts
+  kept `v0.1.1` as the release a visitor was offered; they were published by
+  hand when this changed.
+
 ## [0.4.0] — 2026-09-13
 
 ### Changed

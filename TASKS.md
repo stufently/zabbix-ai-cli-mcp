@@ -24,6 +24,8 @@ Cutover on this host:
   `item.update` without `type` are refused, an agent item plans normally, and the
   probe plan was rejected — no scratch objects left in Zabbix.
 - **Takes effect on the next Claude Code and Codex restart.**
+- The drafts v0.2.0–v0.4.0 were published and v0.4.0 marked as the latest
+  release; goreleaser no longer drafts (owner's call, 13.09.2026).
 
 ## OPEN — the `-X` ldflags that stamp the version are inert
 

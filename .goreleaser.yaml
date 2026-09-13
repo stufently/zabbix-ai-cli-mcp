@@ -69,4 +69,6 @@ changelog:
     exclude: ["^docs:", "^test:", "^chore:"]
 
 release:
-  draft: true
+  # The repository is public: a draft leaves whoever comes for a release
+  # looking at an older tag as the latest one.
+  draft: false
