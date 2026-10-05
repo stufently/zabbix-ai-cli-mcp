@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Build toolchain pins moved from Go 1.27.0 to 1.27.1 (Dockerfile, Makefile,
+  CI and release workflows). The `go` directive stays at 1.25.0 on purpose: it
+  is a lower bound on consumers, not a build pin.
+
 ## [0.4.1] — 2026-09-13
 
 ### Fixed

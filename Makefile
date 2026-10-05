@@ -1,7 +1,7 @@
 # Builds and tests run inside Linux containers, so a host with an older Go
 # toolchain still produces a correct Linux binary. Keep this on the latest
 # stable Go release. Use the Go toolchain directly for a host-native binary.
-GO_IMAGE   ?= golang:1.27.0
+GO_IMAGE   ?= golang:1.27.1
 GOLANGCI_LINT_VERSION ?= v2.13.1
 BINARY     := zabbix-ai-cli-mcp
 PKG        := ./cmd/zabbix-ai-cli-mcp
