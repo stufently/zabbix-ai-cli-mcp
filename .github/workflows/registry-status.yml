@@ -1,0 +1,50 @@
+name: Registry status
+
+# Changes the status of an entry in the official MCP registry: deprecating the
+# pre-rename `io.github.stufently/zabbix-ai-cli`, for one. It runs only by hand.
+# The registry trusts this workflow's OIDC token for everything under
+# io.github.stufently/*, so no personal login or stored secret is involved.
+on:
+  workflow_dispatch:
+    inputs:
+      server:
+        description: "Registry server name"
+        required: true
+        default: "io.github.stufently/zabbix-ai-cli"
+      status:
+        description: "New status"
+        required: true
+        type: choice
+        options: [deprecated, active, deleted]
+        default: deprecated
+      message:
+        description: "Status message shown to clients"
+        required: false
+        default: "Renamed: use io.github.stufently/zabbix-ai-cli-mcp"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PUBLISHER_VERSION: "1.8.1"
+  PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install mcp-publisher
+        run: |
+          url="https://github.com/modelcontextprotocol/registry/releases/download/v${PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          curl -fsSL -o publisher.tar.gz "$url"
+          echo "${PUBLISHER_SHA256}  publisher.tar.gz" | sha256sum -c -
+          tar -xzf publisher.tar.gz mcp-publisher
+      - name: Log in with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+      - name: Set status on all versions
+        env:
+          SERVER: ${{ inputs.server }}
+          STATUS: ${{ inputs.status }}
+          MESSAGE: ${{ inputs.message }}
+        run: ./mcp-publisher status --status "$STATUS" --message "$MESSAGE" --all-versions -y "$SERVER"
