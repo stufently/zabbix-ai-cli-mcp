@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- `registry-status.yml`: a hand-run workflow that sets the status of an entry
+  in the official MCP registry over GitHub OIDC. Used on 2026-10-08 to deprecate
+  the pre-rename `io.github.stufently/zabbix-ai-cli` (0.1.0, 0.1.1).
+
 ### Changed
 
 - Build toolchain pins moved from Go 1.27.0 to 1.27.1 (Dockerfile, Makefile,
