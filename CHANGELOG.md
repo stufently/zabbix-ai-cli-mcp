@@ -4,6 +4,12 @@
 
 ### Added
 
+- README: copy-paste install of the prebuilt release binary without Go —
+  curl + checksum + tar for Linux/macOS, PowerShell for Windows, by the real
+  asset names. Checked on 2026-10-09 against v0.4.1 linux_amd64: checksum OK,
+  `--version` reports `v0.4.1`, MCP `initialize` and `tools/list` (15 tools)
+  answer over stdio. The stale "until the first tag lands" note is gone.
+- README: a Zed example (`context_servers` in `settings.json`).
 - `registry-status.yml`: a hand-run workflow that sets the status of an entry
   in the official MCP registry over GitHub OIDC. Used on 2026-10-08 to deprecate
   the pre-rename `io.github.stufently/zabbix-ai-cli` (0.1.0, 0.1.1).

@@ -133,11 +133,53 @@ beats a refusal that gets routed around.
 
 ## Install
 
-> Prebuilt archives and the `ghcr.io` image are published with each tagged
-> release. Until the first tag lands, build from source with either method
-> below.
+### Prebuilt binary (no Go needed)
 
-For a host-native binary, use Go 1.25 or newer:
+Each tagged release publishes archives for Linux, macOS and Windows on amd64
+and arm64, plus `checksums.txt`. On Linux or macOS this fetches the latest
+release, checks it and puts the binary in `~/.local/bin`:
+
+```bash
+VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+  https://github.com/stufently/zabbix-ai-cli-mcp/releases/latest | sed 's|.*/v||')
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')                      # linux | darwin
+ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')        # amd64 | arm64
+ARCHIVE=zabbix-ai-cli-mcp_${VERSION}_${OS}_${ARCH}.tar.gz
+BASE=https://github.com/stufently/zabbix-ai-cli-mcp/releases/download/v${VERSION}
+
+TMP=$(mktemp -d) && cd "$TMP"
+curl -fsSLO "$BASE/$ARCHIVE" && curl -fsSLO "$BASE/checksums.txt"
+grep " $ARCHIVE\$" checksums.txt | shasum -a 256 -c -   # sha256sum -c - works too
+tar -xzf "$ARCHIVE"
+mkdir -p ~/.local/bin && install -m 0755 zabbix-ai-cli-mcp ~/.local/bin/
+zabbix-ai-cli-mcp --version
+```
+
+`~/.local/bin` has to be on `PATH`, because the client configurations below call
+the binary by name; otherwise give them the absolute path. The archive also
+carries `docs/` and the agent skills.
+
+On Windows (PowerShell), the archive is a zip:
+
+```powershell
+$Version = (Invoke-RestMethod https://api.github.com/repos/stufently/zabbix-ai-cli-mcp/releases/latest).tag_name.TrimStart('v')
+$Arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
+$Zip = "zabbix-ai-cli-mcp_${Version}_windows_${Arch}.zip"
+$Base = "https://github.com/stufently/zabbix-ai-cli-mcp/releases/download/v$Version"
+Invoke-WebRequest "$Base/$Zip" -OutFile $Zip
+Invoke-WebRequest "$Base/checksums.txt" -OutFile checksums.txt
+$Want = ((Select-String -Path checksums.txt -Pattern " $Zip$").Line -split '\s+')[0]
+if ((Get-FileHash $Zip -Algorithm SHA256).Hash -ne $Want) { throw "checksum mismatch" }
+Expand-Archive $Zip -DestinationPath "$env:LOCALAPPDATA\zabbix-ai-cli-mcp" -Force
+& "$env:LOCALAPPDATA\zabbix-ai-cli-mcp\zabbix-ai-cli-mcp.exe" --version
+```
+
+Add `%LOCALAPPDATA%\zabbix-ai-cli-mcp` to `PATH`, or use the full path to
+`zabbix-ai-cli-mcp.exe` in the client configuration.
+
+### From source
+
+For a host-native build, use Go 1.25 or newer:
 
 ```bash
 go install github.com/stufently/zabbix-ai-cli-mcp/cmd/zabbix-ai-cli-mcp@latest
@@ -219,6 +261,27 @@ args = ["mcp", "--profile", "prod"]
 ```bash
 zabbix-ai-cli-mcp skills install codex
 ```
+
+### Zed
+
+Zed calls MCP servers context servers. In `settings.json` (`zed: open settings
+file`):
+
+```json
+{
+  "context_servers": {
+    "zabbix": {
+      "command": "zabbix-ai-cli-mcp",
+      "args": ["mcp", "--profile", "prod"],
+      "env": {}
+    }
+  }
+}
+```
+
+The same entry can be made from **Settings → AI → MCP Servers → Add Server →
+Add Local Server**; the indicator next to the server's name there shows whether
+it started.
 
 ### Cursor, Windsurf, VS Code and other MCP clients
 
