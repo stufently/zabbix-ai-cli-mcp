@@ -19,7 +19,10 @@
 - Build toolchain pins moved from Go 1.27.0 to 1.27.1, then to 1.27.2
   (Dockerfile, Makefile, CI and release workflows): govulncheck in CI flagged
   nine standard-library advisories in 1.27.1 (crypto/tls, net/http, http2,
-  net/textproto; GO-2026-6603…6617), all fixed in 1.27.2. The `go` directive stays at 1.25.0 on purpose: it
+  net/textproto; GO-2026-6603…6617), all fixed in 1.27.2.
+- golangci-lint in CI moved from v2.13.1 to v2.14.0: v2.13.1 cannot read the
+  export data of the Go 1.27.2 standard library and failed with typecheck
+  errors. The `go` directive stays at 1.25.0 on purpose: it
   is a lower bound on consumers, not a build pin.
 
 ## [0.4.1] — 2026-09-13
