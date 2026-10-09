@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-10-09
+
 ### Added
 
 - README: copy-paste install of the prebuilt release binary without Go —
