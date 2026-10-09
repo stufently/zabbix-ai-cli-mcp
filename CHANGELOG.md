@@ -16,8 +16,10 @@
 
 ### Changed
 
-- Build toolchain pins moved from Go 1.27.0 to 1.27.1 (Dockerfile, Makefile,
-  CI and release workflows). The `go` directive stays at 1.25.0 on purpose: it
+- Build toolchain pins moved from Go 1.27.0 to 1.27.1, then to 1.27.2
+  (Dockerfile, Makefile, CI and release workflows): govulncheck in CI flagged
+  nine standard-library advisories in 1.27.1 (crypto/tls, net/http, http2,
+  net/textproto; GO-2026-6603…6617), all fixed in 1.27.2. The `go` directive stays at 1.25.0 on purpose: it
   is a lower bound on consumers, not a build pin.
 
 ## [0.4.1] — 2026-09-13
