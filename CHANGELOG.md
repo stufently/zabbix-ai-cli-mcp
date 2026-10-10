@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- MCP tool descriptions no longer name tools the running mode does not
+  register. On a read-only server `zabbix_maintenance_list` and
+  `zabbix_api_call` pointed at `zabbix_plan_create` and `zabbix_write`; without
+  direct writes `zabbix_plan_create`, `zabbix_plan_status` and both read tools
+  pointed at `zabbix_write`. The route to a change is now filled in for the
+  mode: ask the operator (read-only), `zabbix_plan_create` (planning), or
+  `zabbix_write` with `zabbix_plan_create` (writes allowed). A test checks every
+  description and input schema against `tools/list` in all three modes.
+- The `zabbix-maintenance` skill covers the read-only server too: with neither
+  `zabbix_write` nor `zabbix_plan_create` offered, it asks the operator to make
+  the change instead of sending the model to a missing tool.
+
 ## [0.4.3] — 2026-10-10
 
 ### Added

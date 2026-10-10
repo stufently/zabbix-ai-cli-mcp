@@ -71,7 +71,12 @@ type Operation struct {
 	// "Use when", and it names a neighbouring tool when this one is the wrong
 	// choice. CLI help stays Summary and Long; the model choosing a tool sees
 	// all three.
-	When   string
+	When string
+	// Change is MCP-only too: the start of a sentence naming a change this
+	// tool cannot make, for example "To open, extend, end or remove a window,".
+	// The server finishes the sentence with the route that exists in the mode
+	// it runs in, so a description never names a tool it did not register.
+	Change string
 	Risk   safety.Risk
 	Scope  string
 	Params []Param
@@ -115,8 +120,9 @@ func (o *Operation) ReadOnly() bool { return o.Risk == safety.RiskRead }
 func (o *Operation) CommandPath() string { return strings.Join(o.CLI, " ") }
 
 // ToolDescription is the text registered as the MCP tool description.
-// The first sentence is Summary. When is appended only for the model.
-func (o *Operation) ToolDescription() string {
+// The first sentence is Summary. When is appended only for the model, and
+// Change is completed with changeRoute, which the server picks for its mode.
+func (o *Operation) ToolDescription(changeRoute string) string {
 	var b strings.Builder
 	b.WriteString(o.Summary)
 	if o.Long != "" {
@@ -126,6 +132,16 @@ func (o *Operation) ToolDescription() string {
 	if o.When != "" {
 		b.WriteString("\n\n")
 		b.WriteString(o.When)
+	}
+	if o.Change != "" {
+		if o.When != "" {
+			b.WriteString(" ")
+		} else {
+			b.WriteString("\n\n")
+		}
+		b.WriteString(o.Change)
+		b.WriteString(" ")
+		b.WriteString(changeRoute)
 	}
 	return b.String()
 }

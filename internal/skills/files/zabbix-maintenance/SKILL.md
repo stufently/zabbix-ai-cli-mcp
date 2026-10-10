@@ -32,8 +32,10 @@ smaller window — read the host count in the plan before going further.
 
 **Whether you may apply it depends on the installation.** Where `zabbix_write`
 is offered, the change is yours to make: check the matched hosts first, make it,
-and say plainly what you did. Where it is not, `zabbix_plan_create` is the only
-route — relay the `approve_command` verbatim and let the operator run it.
+and say plainly what you did. Where only `zabbix_plan_create` is offered, it is
+the only route — relay the `approve_command` verbatim and let the operator run it.
+Where neither is offered, the server is read-only: say what should change and
+ask the operator to make it.
 
 ## Data collection
 

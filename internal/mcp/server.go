@@ -103,6 +103,20 @@ func writeRoute(opts Options) string {
 	}
 }
 
+// changeRoute finishes an operation's Change sentence with the way to make a
+// change that exists in this mode. A read tool pointing at zabbix_plan_create
+// on a read-only server would name a tool the client cannot see.
+func changeRoute(opts Options) string {
+	switch {
+	case opts.ReadOnly:
+		return "ask the operator: this server is read-only and offers no tool that changes Zabbix."
+	case opts.AllowWrite:
+		return "call zabbix_write, or zabbix_plan_create to show the operator the change first."
+	default:
+		return "call zabbix_plan_create and relay the approve command it returns."
+	}
+}
+
 func registerRead(server *sdk.Server, opts Options, op *opspec.Operation) {
 	schema, err := json.Marshal(op.InputSchema())
 	if err != nil {
@@ -110,7 +124,7 @@ func registerRead(server *sdk.Server, opts Options, op *opspec.Operation) {
 	}
 	server.AddTool(&sdk.Tool{
 		Name:        op.MCPTool,
-		Description: op.ToolDescription(),
+		Description: op.ToolDescription(changeRoute(opts)),
 		InputSchema: json.RawMessage(schema),
 		Annotations: readAnnotations(true),
 	}, func(ctx context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
@@ -186,12 +200,21 @@ func registerPlanTools(server *sdk.Server, opts Options) {
 			"would do; call zabbix_write to make one, or relay the approve command so the operator " +
 			"applies this exact plan."
 	}
+	// zabbix_write is named only where it is registered: a planning-only
+	// server pointing at it would send the model to a tool it cannot see.
+	planNeighbours := "Call zabbix_plan_status to check a plan that already exists."
+	statusNeighbours := "Call zabbix_plan_create to describe a new change."
+	if opts.AllowWrite {
+		planNeighbours = "Call zabbix_write instead when the user wants the change applied now; " +
+			"call zabbix_plan_status to check a plan that already exists."
+		statusNeighbours = "Call zabbix_plan_create to describe a new change, " +
+			"and call zabbix_write when the user wants that change made now."
+	}
 	server.AddTool(&sdk.Tool{
 		Name: "zabbix_plan_create",
 		Description: "Describe a change to Zabbix without making it. " +
 			"Use when the user wants to see what a change would do before anything is written. " +
-			"Call zabbix_write instead when this server offers it and the user wants the change applied now; " +
-			"call zabbix_plan_status to check a plan that already exists.\n\n" +
+			planNeighbours + "\n\n" +
 			"Returns a plan identifier and the exact command the operator must run to apply it. " +
 			applyNote + "\n\n" +
 			"Available operations:\n" + strings.Join(summaries, "\n"),
@@ -246,7 +269,7 @@ func registerPlanTools(server *sdk.Server, opts Options) {
 		Name: "zabbix_plan_status",
 		Description: "Check whether a stored plan is still waiting, was applied, or has expired. " +
 			"Use when the user asks what happened to a change they were asked to approve, or after zabbix_plan_create while you wait. " +
-			"Call zabbix_plan_create to describe a new change, and call zabbix_write only when it is offered and the user wants that change made now.",
+			statusNeighbours,
 		InputSchema: json.RawMessage(statusSchema),
 		// Status is read from the local plan store and the audit log. It does
 		// not call Zabbix, so its world is closed.

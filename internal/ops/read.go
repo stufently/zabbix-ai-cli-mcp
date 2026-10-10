@@ -616,8 +616,8 @@ func maintenanceList() *opspec.Operation {
 		Summary: "List maintenance windows, including expired ones.",
 		Long: "Expired windows are shown by default: removing one that has already lapsed is a routine follow-up, " +
 			"and it cannot be done if the window is invisible.",
-		When: "Use when the user asks which maintenance windows exist, which hosts are silenced, or whether a window has expired. " +
-			"To open, extend, end or remove a window call zabbix_plan_create, or zabbix_write when this server offers it.",
+		When:   "Use when the user asks which maintenance windows exist, which hosts are silenced, or whether a window has expired.",
+		Change: "To open, extend, end or remove a window,",
 		Params: []opspec.Param{
 			{Name: "host", Type: opspec.TypeString, Description: "only windows covering this host"},
 			{Name: "search", Type: opspec.TypeString, Description: "name fragment"},
