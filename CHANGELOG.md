@@ -2,8 +2,12 @@
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-10-10
+
 ### Added
 
+- `glama.json` in the repository root names the maintainer for the Glama
+  directory listing.
 - MCP tool descriptions tell the model what each tool does and when to call it
   (a sentence that starts with "Use when", and the neighbouring tool when there
   is one). Every tool carries `readOnlyHint`, an explicit `destructiveHint`,
