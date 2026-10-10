@@ -133,22 +133,9 @@ beats a refusal that gets routed around.
 
 ## Install
 
-```bash
-ZABBIX_AI_CLI_MCP_URL=https://zabbix.example.com ZABBIX_AI_CLI_MCP_TOKEN=your-api-token zabbix-ai-cli-mcp mcp
-```
-
-Paste that into a terminal once `zabbix-ai-cli-mcp` is on `PATH`. It is the
-same command every client block below runs: MCP over stdio, with the Zabbix
-URL and API token taken from the environment. Replace the two placeholders.
-The binary itself comes from the prebuilt archive in the next section, and
-`~/.local/bin` has to be on `PATH` (or the client `command` has to be an
-absolute path).
-
-### Prebuilt binary (no Go needed)
-
-Each tagged release publishes archives for Linux, macOS and Windows on amd64
-and arm64, plus `checksums.txt`. On Linux or macOS this fetches the latest
-release, checks it and puts the binary in `~/.local/bin`:
+On Linux or macOS, paste this into a terminal. It fetches the latest release,
+checks it against `checksums.txt`, puts the binary in `~/.local/bin` and starts
+the MCP server over stdio. Replace the two placeholders first:
 
 ```bash
 VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
@@ -163,12 +150,21 @@ curl -fsSLO "$BASE/$ARCHIVE" && curl -fsSLO "$BASE/checksums.txt"
 grep " $ARCHIVE\$" checksums.txt | shasum -a 256 -c -   # sha256sum -c - works too
 tar -xzf "$ARCHIVE"
 mkdir -p ~/.local/bin && install -m 0755 zabbix-ai-cli-mcp ~/.local/bin/
-zabbix-ai-cli-mcp --version
+~/.local/bin/zabbix-ai-cli-mcp --version
+ZABBIX_AI_CLI_MCP_URL=https://zabbix.example.com ZABBIX_AI_CLI_MCP_TOKEN=your-api-token ~/.local/bin/zabbix-ai-cli-mcp mcp
 ```
 
-`~/.local/bin` has to be on `PATH`, because the client configurations below call
-the binary by name; otherwise give them the absolute path. The archive also
-carries `docs/` and the agent skills.
+The last line is the command every client block below runs: `zabbix-ai-cli-mcp`
+with arguments `["mcp"]`, the Zabbix URL and API token taken from the
+environment. Stop it with Ctrl-C once it starts; the client launches it from
+then on. `~/.local/bin` has to be on `PATH`, because the client configurations
+call the binary by name; otherwise give them the absolute path.
+
+### Prebuilt binary (no Go needed)
+
+Each tagged release publishes archives for Linux, macOS and Windows on amd64
+and arm64, plus `checksums.txt`. The block at the top of this section installs
+one on Linux or macOS. The archive also carries `docs/` and the agent skills.
 
 On Windows (PowerShell), the archive is a zip:
 

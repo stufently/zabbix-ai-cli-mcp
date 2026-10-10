@@ -3,7 +3,7 @@
   "name": "zabbix-ai-cli-mcp",
   "display_name": "Zabbix AI CLI MCP",
   "description": "Task-shaped Zabbix access for AI agents: problems, hosts, metrics, alerts and maintenance.",
-  "long_description": "Asks Zabbix what is broken, why a host is silent and why an alert did not arrive, and can open a maintenance window when writes are allowed. Claude Desktop asks for the Zabbix URL and an API token; both are required. Allow writes is off unless you turn it on. The bundle is a single binary and does not need Node, Python or Go.",
+  "long_description": "Asks Zabbix what is broken, why a host is silent and why an alert did not arrive, and can open a maintenance window when writes are allowed. Claude Desktop asks for the Zabbix URL and an API token; both are required. Allow writes is off unless you turn it on; while it is off the extension only reads. The bundle is a single binary and does not need Node, Python or Go.",
   "author": {
     "name": "stufently"
   },
@@ -48,7 +48,7 @@
     "allow_write": {
       "type": "boolean",
       "title": "Allow writes",
-      "description": "Offer zabbix_write so a change can be applied in one call. Off leaves planning only.",
+      "description": "Offer zabbix_write so a change can be applied in one call and is recorded in the audit log. Off keeps the extension read-only.",
       "default": false
     }
   },

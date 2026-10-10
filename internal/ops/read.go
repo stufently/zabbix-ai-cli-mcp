@@ -313,7 +313,7 @@ func metricsLatest() *opspec.Operation {
 		Long: "Values come from history, because item.lastvalue has returned a constant zero for several releases. " +
 			"The history type is derived from each item automatically; querying it wrongly returns nothing rather than an error.",
 		When: "Use when the user wants the current value of an item, such as CPU, disk or a custom metric, on one host. " +
-			"For values across a time window call zabbix_metrics_history; for a host that has stopped sending data call zabbix_unreachable.",
+			"For values across a time window call zabbix_metrics_history; for a host whose items stopped sending data call zabbix_host_investigate.",
 		Params: []opspec.Param{
 			{Name: "host", Type: opspec.TypeString, Required: true, Positional: true, Description: "host name or fragment"},
 			{Name: "search", Type: opspec.TypeString, Description: "item name or key fragment", Example: "cpu"},
@@ -521,8 +521,8 @@ func unreachable() *opspec.Operation {
 		Scope:   safety.ScopeRead,
 		Summary: "List monitored hosts Zabbix currently cannot poll.",
 		Long:    "Availability lives on the interface: host.available was removed in 5.4, and code still reading it sees nothing at all.",
-		When: "Use when the user asks which hosts Zabbix cannot poll, or why a host went quiet. " +
-			"For one host's problems and items call zabbix_host_investigate; for the newest metric values call zabbix_metrics_latest.",
+		When: "Use when the user asks which hosts Zabbix cannot poll, or which agent, SNMP, IPMI or JMX interfaces are down. " +
+			"A host whose interface is up but whose items went silent is not listed here: call zabbix_host_investigate for that, and zabbix_metrics_latest for the newest values.",
 		Params: []opspec.Param{limitParam(50)},
 		Run: func(ctx context.Context, env *opspec.Env, args *opspec.Args) (*output.Result, error) {
 			hosts, truncated, err := env.Service.ListUnreachable(ctx, args.Int("limit"))
