@@ -1,0 +1,72 @@
+{
+  "manifest_version": "0.3",
+  "name": "zabbix-ai-cli-mcp",
+  "display_name": "Zabbix AI CLI MCP",
+  "description": "Task-shaped Zabbix access for AI agents: problems, hosts, metrics, alerts and maintenance.",
+  "long_description": "Asks Zabbix what is broken, why a host is silent and why an alert did not arrive, and can open a maintenance window when writes are allowed. Claude Desktop asks for the Zabbix URL and an API token; both are required. Allow writes is off unless you turn it on. The bundle is a single binary and does not need Node, Python or Go.",
+  "author": {
+    "name": "stufently"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stufently/zabbix-ai-cli-mcp"
+  },
+  "homepage": "https://github.com/stufently/zabbix-ai-cli-mcp",
+  "support": "https://github.com/stufently/zabbix-ai-cli-mcp/issues",
+  "license": "Apache-2.0",
+  "keywords": ["zabbix", "mcp", "monitoring", "alerts"],
+  "compatibility": {
+    "platforms": ["linux"]
+  },
+  "server": {
+    "type": "binary",
+    "entry_point": "server/zabbix-ai-cli-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/server/zabbix-ai-cli-mcp",
+      "args": ["mcp"],
+      "env": {
+        "ZABBIX_AI_CLI_MCP_URL": "${user_config.url}",
+        "ZABBIX_AI_CLI_MCP_TOKEN": "${user_config.token}",
+        "ZABBIX_AI_CLI_MCP_ALLOW_WRITE": "${user_config.allow_write}"
+      }
+    }
+  },
+  "user_config": {
+    "url": {
+      "type": "string",
+      "title": "Zabbix URL",
+      "description": "Base URL of the Zabbix frontend, for example https://zabbix.example.com",
+      "required": true
+    },
+    "token": {
+      "type": "string",
+      "title": "API token",
+      "description": "Zabbix API token. Claude Desktop stores it as a secret and passes it only to this server.",
+      "sensitive": true,
+      "required": true
+    },
+    "allow_write": {
+      "type": "boolean",
+      "title": "Allow writes",
+      "description": "Offer zabbix_write so a change can be applied in one call. Off leaves planning only.",
+      "default": false
+    }
+  },
+  "tools": [
+    {"name": "zabbix_alert_why", "description": "Explain whether an event produced a notification, and what stood in the way."},
+    {"name": "zabbix_api_call", "description": "Call a Zabbix API method directly."},
+    {"name": "zabbix_host_investigate", "description": "Collect a diagnostic snapshot of one host in a single call."},
+    {"name": "zabbix_host_status", "description": "Summarise one host: availability, active problems, data freshness, maintenance."},
+    {"name": "zabbix_hosts", "description": "Find hosts by name fragment, pattern or group."},
+    {"name": "zabbix_maintenance_list", "description": "List maintenance windows, including expired ones."},
+    {"name": "zabbix_metrics_history", "description": "Read an item's values over a time window, with min, max and average."},
+    {"name": "zabbix_metrics_latest", "description": "Show the newest value of a host's items."},
+    {"name": "zabbix_plan_create", "description": "Describe a change to Zabbix without making it."},
+    {"name": "zabbix_plan_status", "description": "Check whether a stored plan is still waiting, was applied, or has expired."},
+    {"name": "zabbix_problem", "description": "Show one active problem by event identifier."},
+    {"name": "zabbix_problems", "description": "List active Zabbix problems, newest first."},
+    {"name": "zabbix_resolve", "description": "Turn the text of a notification into event, host and trigger identifiers."},
+    {"name": "zabbix_unreachable", "description": "List monitored hosts Zabbix currently cannot poll."},
+    {"name": "zabbix_write", "description": "Change Zabbix in one call and record it in the audit log."}
+  ]
+}

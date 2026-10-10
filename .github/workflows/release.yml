@@ -33,3 +33,19 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The release exists once goreleaser has published the tag. This job only
+  # attaches desktop-extension bundles; it does not publish anywhere else.
+  mcpb:
+    needs: goreleaser
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build .mcpb bundles
+        run: VERSION="${GITHUB_REF_NAME#v}" bash scripts/build-mcpb.sh
+      - name: Attach .mcpb bundles to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" dist-mcpb/*.mcpb --clobber

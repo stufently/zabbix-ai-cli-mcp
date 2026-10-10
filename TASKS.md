@@ -1,5 +1,12 @@
 # Work log
 
+## COMPLETED — 2026-10-10 — promo-mcp: tool guidance and .mcpb bundles
+
+Tool descriptions now say when to call each tool, every tool has explicit
+annotations, the README has one install command and JSON for five clients, and
+`scripts/build-mcpb.sh` builds six `.mcpb` bundles that the release workflow
+attaches. Nothing was published. Details are in CHANGELOG.md.
+
 ## COMPLETED — 2026-09-13 — the version stamp works again; released as 0.4.1
 
 `internal/cli.Version` is a plain constant the linker can replace, and the module

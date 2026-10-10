@@ -49,6 +49,9 @@ func TestEveryOperationIsWellFormed(t *testing.T) {
 		if op.Summary == "" {
 			t.Errorf("%s has no summary; it becomes the tool description", op.Name)
 		}
+		if op.MCPTool != "" && !strings.HasPrefix(op.When, "Use when ") {
+			t.Errorf("%s: MCP tool %q needs guidance starting with %q", op.Name, op.MCPTool, "Use when ")
+		}
 		if op.Run == nil && op.Plan == nil {
 			t.Errorf("%s does nothing", op.Name)
 		}

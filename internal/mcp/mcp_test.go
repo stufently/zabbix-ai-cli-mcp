@@ -152,6 +152,71 @@ func TestToolSurfaceIsSmallAndNamespaced(t *testing.T) {
 	}
 }
 
+func TestToolDescriptionsAndAnnotations(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		new       func(t *testing.T) *harness
+		wantWrite bool
+		wantCount int
+	}{
+		{"writes off", func(t *testing.T) *harness { return newHarness(t, false) }, false, 14},
+		{"writes on", func(t *testing.T) *harness { return newWritableHarness(t) }, true, 15},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.new(t)
+			res, err := h.session.ListTools(context.Background(), nil)
+			if err != nil {
+				t.Fatalf("ListTools: %v", err)
+			}
+			if len(res.Tools) != tc.wantCount {
+				t.Fatalf("tool count = %d, want %d", len(res.Tools), tc.wantCount)
+			}
+			sawWrite := false
+			for _, tool := range res.Tools {
+				if len(strings.Fields(tool.Description)) < 25 {
+					t.Errorf("%s: description has %d words, needs at least 25", tool.Name, len(strings.Fields(tool.Description)))
+				}
+				if !strings.Contains(strings.ToLower(tool.Description), "use when") {
+					t.Errorf("%s: description has no \"Use when\" guidance", tool.Name)
+				}
+				if !strings.Contains(strings.ToLower(tool.Description), "call ") {
+					t.Errorf("%s: description does not point at a neighbouring tool", tool.Name)
+				}
+				ann := tool.Annotations
+				if ann == nil || ann.DestructiveHint == nil || ann.OpenWorldHint == nil {
+					t.Errorf("%s: annotations are incomplete: %+v", tool.Name, ann)
+					continue
+				}
+				if ann.ReadOnlyHint && *ann.DestructiveHint {
+					t.Errorf("%s: read-only tool is also marked destructive", tool.Name)
+				}
+				switch tool.Name {
+				case "zabbix_write":
+					sawWrite = true
+					if ann.ReadOnlyHint || !*ann.DestructiveHint || ann.IdempotentHint || !*ann.OpenWorldHint {
+						t.Errorf("zabbix_write annotations = %+v", ann)
+					}
+				case "zabbix_plan_create":
+					if !ann.ReadOnlyHint || *ann.DestructiveHint || ann.IdempotentHint || !*ann.OpenWorldHint {
+						t.Errorf("zabbix_plan_create annotations = %+v", ann)
+					}
+				case "zabbix_plan_status":
+					if !ann.ReadOnlyHint || *ann.DestructiveHint || !ann.IdempotentHint || *ann.OpenWorldHint {
+						t.Errorf("zabbix_plan_status annotations = %+v", ann)
+					}
+				default:
+					if !ann.ReadOnlyHint || *ann.DestructiveHint || !ann.IdempotentHint || !*ann.OpenWorldHint {
+						t.Errorf("%s annotations = %+v", tool.Name, ann)
+					}
+				}
+			}
+			if sawWrite != tc.wantWrite {
+				t.Errorf("zabbix_write present = %v, want %v", sawWrite, tc.wantWrite)
+			}
+		})
+	}
+}
+
 func TestNoToolChangesZabbixWhenDirectWritesAreOff(t *testing.T) {
 	h := newHarness(t, false, config.ScopeMaintenance)
 	res, err := h.session.ListTools(context.Background(), nil)

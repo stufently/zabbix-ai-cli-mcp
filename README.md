@@ -133,6 +133,17 @@ beats a refusal that gets routed around.
 
 ## Install
 
+```bash
+ZABBIX_AI_CLI_MCP_URL=https://zabbix.example.com ZABBIX_AI_CLI_MCP_TOKEN=your-api-token zabbix-ai-cli-mcp mcp
+```
+
+Paste that into a terminal once `zabbix-ai-cli-mcp` is on `PATH`. It is the
+same command every client block below runs: MCP over stdio, with the Zabbix
+URL and API token taken from the environment. Replace the two placeholders.
+The binary itself comes from the prebuilt archive in the next section, and
+`~/.local/bin` has to be on `PATH` (or the client `command` has to be an
+absolute path).
+
 ### Prebuilt binary (no Go needed)
 
 Each tagged release publishes archives for Linux, macOS and Windows on amd64
@@ -223,31 +234,129 @@ the headless and container cases.
 
 ## Add the Zabbix MCP server to your AI client
 
-The MCP client never sees the Zabbix token. It is resolved inside the server
-process from the profile you configured, so the credential never enters a
-model's context or a client's configuration file.
+Each block below runs `zabbix-ai-cli-mcp` with arguments `["mcp"]`, the same
+command as the install line above. The URL and the API token are placeholders
+in `env`: replace them, and do not commit a real token. If you would rather
+keep the token out of the client, run `zabbix-ai-cli-mcp login` and pass
+`--profile` plus the profile name in `args` instead of those two variables.
 
 ### Claude Code
 
-```bash
-claude mcp add zabbix -- zabbix-ai-cli-mcp mcp --profile prod
-zabbix-ai-cli-mcp skills install claude
-```
-
-### Claude Desktop
-
-`claude_desktop_config.json`:
+Project file `.mcp.json`, at the root of the project:
 
 ```json
 {
   "mcpServers": {
     "zabbix": {
       "command": "zabbix-ai-cli-mcp",
-      "args": ["mcp", "--profile", "prod"]
+      "args": ["mcp"],
+      "env": {
+        "ZABBIX_AI_CLI_MCP_URL": "https://zabbix.example.com",
+        "ZABBIX_AI_CLI_MCP_TOKEN": "your-api-token"
+      }
     }
   }
 }
 ```
+
+The same server can be registered from a terminal. Set the two variables in
+the environment that launches Claude Code, or rely on the `.mcp.json` above:
+
+```bash
+claude mcp add zabbix -- zabbix-ai-cli-mcp mcp
+zabbix-ai-cli-mcp skills install claude
+```
+
+### Claude Desktop
+
+`claude_desktop_config.json` — macOS `~/Library/Application Support/Claude/claude_desktop_config.json`,
+Windows `%APPDATA%\Claude\claude_desktop_config.json`, Linux `~/.config/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "zabbix": {
+      "command": "zabbix-ai-cli-mcp",
+      "args": ["mcp"],
+      "env": {
+        "ZABBIX_AI_CLI_MCP_URL": "https://zabbix.example.com",
+        "ZABBIX_AI_CLI_MCP_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+Claude Desktop can also install this server in one click. Download the `.mcpb`
+for your operating system from
+https://github.com/stufently/zabbix-ai-cli-mcp/releases/latest
+and open it. Desktop asks for the Zabbix URL, the API token, and whether
+writes are allowed (off by default). See [docs/mcp.md](docs/mcp.md).
+
+### Cursor
+
+`~/.cursor/mcp.json`, or `.cursor/mcp.json` in the project:
+
+```json
+{
+  "mcpServers": {
+    "zabbix": {
+      "command": "zabbix-ai-cli-mcp",
+      "args": ["mcp"],
+      "env": {
+        "ZABBIX_AI_CLI_MCP_URL": "https://zabbix.example.com",
+        "ZABBIX_AI_CLI_MCP_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+### Windsurf
+
+`mcp_config.json`. On macOS and Linux that is `~/.config/devin/mcp_config.json`
+(or `$XDG_CONFIG_HOME/devin/mcp_config.json`). On Windows it is
+`%APPDATA%\devin\mcp_config.json`. Older builds used
+`~/.codeium/windsurf/mcp_config.json`.
+
+```json
+{
+  "mcpServers": {
+    "zabbix": {
+      "command": "zabbix-ai-cli-mcp",
+      "args": ["mcp"],
+      "env": {
+        "ZABBIX_AI_CLI_MCP_URL": "https://zabbix.example.com",
+        "ZABBIX_AI_CLI_MCP_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+### Zed
+
+Zed calls MCP servers context servers. The file is `settings.json`
+(`zed: open settings file`):
+
+```json
+{
+  "context_servers": {
+    "zabbix": {
+      "command": "zabbix-ai-cli-mcp",
+      "args": ["mcp"],
+      "env": {
+        "ZABBIX_AI_CLI_MCP_URL": "https://zabbix.example.com",
+        "ZABBIX_AI_CLI_MCP_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+The same entry can be made from **Settings → AI → MCP Servers → Add Server →
+Add Local Server**; the indicator next to the server's name there shows whether
+it started.
 
 ### Codex
 
@@ -262,32 +371,11 @@ args = ["mcp", "--profile", "prod"]
 zabbix-ai-cli-mcp skills install codex
 ```
 
-### Zed
+### VS Code
 
-Zed calls MCP servers context servers. In `settings.json` (`zed: open settings
-file`):
-
-```json
-{
-  "context_servers": {
-    "zabbix": {
-      "command": "zabbix-ai-cli-mcp",
-      "args": ["mcp", "--profile", "prod"],
-      "env": {}
-    }
-  }
-}
-```
-
-The same entry can be made from **Settings → AI → MCP Servers → Add Server →
-Add Local Server**; the indicator next to the server's name there shows whether
-it started.
-
-### Cursor, Windsurf, VS Code and other MCP clients
-
-Any client that speaks stdio takes the same two fields — command
-`zabbix-ai-cli-mcp`, arguments `["mcp", "--profile", "prod"]`. For a client that
-wants HTTP instead:
+Any other stdio client takes the same command `zabbix-ai-cli-mcp` and arguments
+`["mcp"]`, plus the URL and token in the environment. For a client that wants
+HTTP instead:
 
 ```bash
 zabbix-ai-cli-mcp mcp --http 127.0.0.1:8000 --bearer-token "$MCP_TOKEN"
@@ -327,6 +415,13 @@ Write operations do not get one tool each. `zabbix_write` and
 `zabbix_plan_create` take an `operation` enum generated from the same registry
 the CLI is built from, so the tool surface does not grow as operations are
 added. `zabbix_write` is offered only where `allow_write` permits it.
+
+## Example prompts
+
+- Why did the disk alert on web01 never arrive?
+- What is broken in Zabbix right now?
+- Which monitored hosts has Zabbix been unable to poll?
+- How did CPU on db01 look over the last day?
 
 ## JSON contract
 

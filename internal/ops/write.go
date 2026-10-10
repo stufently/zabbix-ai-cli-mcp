@@ -218,6 +218,8 @@ func apiCall() *opspec.Operation {
 		Long: "Read methods run immediately. Write methods produce a plan and go through approval like every other change. " +
 			"A method that is not in the risk registry is refused rather than guessed at. " +
 			"Over MCP this tool is read-only; writes are requested through the plan tool.",
+		When: "Use when no high-level tool covers the question and a read method such as host.get is required. " +
+			"For problems, hosts, metrics or alert delivery call the matching zabbix tool instead; a write through this tool is refused, so call zabbix_plan_create or zabbix_write.",
 		Params: []opspec.Param{
 			{Name: "method", Type: opspec.TypeString, Required: true, Positional: true,
 				Description: "API method, for example host.get", Example: "host.get"},

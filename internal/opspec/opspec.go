@@ -67,9 +67,14 @@ type Operation struct {
 	MCPTool string
 	Summary string
 	Long    string
-	Risk    safety.Risk
-	Scope   string
-	Params  []Param
+	// When is MCP-only guidance. It is a separate sentence that starts with
+	// "Use when", and it names a neighbouring tool when this one is the wrong
+	// choice. CLI help stays Summary and Long; the model choosing a tool sees
+	// all three.
+	When   string
+	Risk   safety.Risk
+	Scope  string
+	Params []Param
 
 	// Run performs a read and returns a result.
 	Run func(ctx context.Context, env *Env, args *Args) (*output.Result, error)
@@ -108,6 +113,22 @@ func (o *Operation) ReadOnly() bool { return o.Risk == safety.RiskRead }
 
 // CommandPath renders the CLI path as a single string.
 func (o *Operation) CommandPath() string { return strings.Join(o.CLI, " ") }
+
+// ToolDescription is the text registered as the MCP tool description.
+// The first sentence is Summary. When is appended only for the model.
+func (o *Operation) ToolDescription() string {
+	var b strings.Builder
+	b.WriteString(o.Summary)
+	if o.Long != "" {
+		b.WriteString("\n\n")
+		b.WriteString(o.Long)
+	}
+	if o.When != "" {
+		b.WriteString("\n\n")
+		b.WriteString(o.When)
+	}
+	return b.String()
+}
 
 // Env is what an operation needs to do its work.
 type Env struct {

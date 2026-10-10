@@ -108,16 +108,11 @@ func registerRead(server *sdk.Server, opts Options, op *opspec.Operation) {
 	if err != nil {
 		return
 	}
-	description := op.Summary
-	if op.Long != "" {
-		description += "\n\n" + op.Long
-	}
-	readOnly := true
 	server.AddTool(&sdk.Tool{
 		Name:        op.MCPTool,
-		Description: description,
+		Description: op.ToolDescription(),
 		InputSchema: json.RawMessage(schema),
-		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: readOnly},
+		Annotations: readAnnotations(true),
 	}, func(ctx context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 		input, err := decodeArguments(req)
 		if err != nil {
@@ -184,7 +179,6 @@ func registerPlanTools(server *sdk.Server, opts Options) {
 	if err != nil {
 		return
 	}
-	readOnly := true
 	applyNote := "You cannot apply it yourself and there is no parameter that would let you: approval " +
 		"happens at a terminal, outside this conversation. Relay the approve command verbatim."
 	if opts.AllowWrite {
@@ -194,13 +188,22 @@ func registerPlanTools(server *sdk.Server, opts Options) {
 	}
 	server.AddTool(&sdk.Tool{
 		Name: "zabbix_plan_create",
-		Description: "Describe a change to Zabbix without making it.\n\n" +
+		Description: "Describe a change to Zabbix without making it. " +
+			"Use when the user wants to see what a change would do before anything is written. " +
+			"Call zabbix_write instead when this server offers it and the user wants the change applied now; " +
+			"call zabbix_plan_status to check a plan that already exists.\n\n" +
 			"Returns a plan identifier and the exact command the operator must run to apply it. " +
 			applyNote + "\n\n" +
 			"Available operations:\n" + strings.Join(summaries, "\n"),
 		InputSchema: json.RawMessage(raw),
-		// The tool itself changes nothing; it only writes a plan file.
-		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: readOnly},
+		// The tool does not change Zabbix. It does store a new plan on every call,
+		// so it is not idempotent, and building the plan reads Zabbix.
+		Annotations: &sdk.ToolAnnotations{
+			ReadOnlyHint:    true,
+			DestructiveHint: boolPtr(false),
+			IdempotentHint:  false,
+			OpenWorldHint:   boolPtr(true),
+		},
 	}, func(ctx context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 		var in planInput
 		if len(req.Params.Arguments) > 0 {
@@ -241,10 +244,13 @@ func registerPlanTools(server *sdk.Server, opts Options) {
 	}
 	server.AddTool(&sdk.Tool{
 		Name: "zabbix_plan_status",
-		Description: "Check whether a plan is still waiting, was applied, or expired. " +
-			"Poll this after asking the operator to approve a change.",
+		Description: "Check whether a stored plan is still waiting, was applied, or has expired. " +
+			"Use when the user asks what happened to a change they were asked to approve, or after zabbix_plan_create while you wait. " +
+			"Call zabbix_plan_create to describe a new change, and call zabbix_write only when it is offered and the user wants that change made now.",
 		InputSchema: json.RawMessage(statusSchema),
-		Annotations: &sdk.ToolAnnotations{ReadOnlyHint: readOnly},
+		// Status is read from the local plan store and the audit log. It does
+		// not call Zabbix, so its world is closed.
+		Annotations: readAnnotations(false),
 	}, func(ctx context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 		var in struct {
 			PlanID string `json:"plan_id"`
@@ -380,6 +386,17 @@ func toolError(err error) *sdk.CallToolResult {
 		IsError:           true,
 		Content:           []sdk.Content{&sdk.TextContent{Text: string(encoded)}},
 		StructuredContent: body,
+	}
+}
+
+// readAnnotations marks a tool that does not change Zabbix.
+// openWorld is true when the call reaches the Zabbix API.
+func readAnnotations(openWorld bool) *sdk.ToolAnnotations {
+	return &sdk.ToolAnnotations{
+		ReadOnlyHint:    true,
+		DestructiveHint: boolPtr(false),
+		IdempotentHint:  true,
+		OpenWorldHint:   boolPtr(openWorld),
 	}
 }
 
