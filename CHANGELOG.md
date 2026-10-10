@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Added
+
+- MCP tool descriptions tell the model what each tool does and when to call it
+  (a sentence that starts with "Use when", and the neighbouring tool when there
+  is one). Every tool carries `readOnlyHint`, an explicit `destructiveHint`,
+  `idempotentHint` and `openWorldHint`. Tool names and input schemas are unchanged.
+- README install starts from one command, with JSON blocks for Claude Code
+  (`.mcp.json`), Claude Desktop, Cursor, Windsurf and Zed, plus example prompts.
+- Desktop extension bundles (`.mcpb`) for linux, darwin and windows on amd64 and
+  arm64. `scripts/build-mcpb.sh` builds them in Docker, and the release workflow
+  attaches them to the GitHub release. Claude Desktop asks for the Zabbix URL,
+  the API token and whether writes are allowed.
+
 ## [0.4.2] — 2026-10-09
 
 ### Added

@@ -36,18 +36,19 @@ func registerWriteTool(server *sdk.Server, opts Options) {
 	}
 	server.AddTool(&sdk.Tool{
 		Name: "zabbix_write",
-		Description: "Change Zabbix.\n\n" +
-			"The change is described and applied in this one call, and the result says what " +
-			"was done. Every change is written to an audit log the operator can read, so " +
-			"prefer the narrowest operation that does the job and say plainly what you did.\n\n" +
-			"Operations marked destructive remove something Zabbix cannot restore on its own. " +
-			"To show the operator a change before making it, call zabbix_plan_create instead.\n\n" +
+		Description: "Change Zabbix in one call and record it in the audit log. " +
+			"Use when the user wants a permitted change applied now rather than only described. " +
+			"To show the operator the change before anything is written, call zabbix_plan_create instead; " +
+			"to check a plan that already exists, call zabbix_plan_status.\n\n" +
+			"Prefer the narrowest operation that does the job and say plainly what you did. " +
+			"Operations marked destructive remove something Zabbix cannot restore on its own.\n\n" +
 			"Available operations:\n" + strings.Join(summaries, "\n"),
 		InputSchema: json.RawMessage(raw),
 		Annotations: &sdk.ToolAnnotations{
 			ReadOnlyHint:    false,
 			DestructiveHint: boolPtr(true),
 			IdempotentHint:  false,
+			OpenWorldHint:   boolPtr(true),
 		},
 	}, func(ctx context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 		var in planInput

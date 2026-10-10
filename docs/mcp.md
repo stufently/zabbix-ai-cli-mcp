@@ -21,6 +21,31 @@ claude mcp add zabbix-prod  -- zabbix-ai-cli-mcp mcp --profile prod
 claude mcp add zabbix-stage -- zabbix-ai-cli-mcp mcp --profile staging
 ```
 
+## Claude Desktop
+
+Download the `.mcpb` for your operating system from
+<https://github.com/stufently/zabbix-ai-cli-mcp/releases/latest> and open it.
+Claude Desktop installs the bundle and asks for three settings before the
+server starts:
+
+| Setting | Required | Passed to the server as |
+| --- | --- | --- |
+| Zabbix URL | yes | `ZABBIX_AI_CLI_MCP_URL` |
+| API token | yes, masked and stored as a secret | `ZABBIX_AI_CLI_MCP_TOKEN` |
+| Allow writes | no, off unless the user turns it on | `ZABBIX_AI_CLI_MCP_ALLOW_WRITE` |
+
+The bundle is one binary for that platform. It does not need Node, Python or
+Go. With writes left off, the extension is read-only: it is configured from the
+URL and token alone, so it has no profile scopes, and `zabbix_plan_create`
+refuses changes with `SCOPE_NOT_GRANTED`. To plan changes for a person to
+approve, configure a profile with scopes by hand instead (see the README).
+With writes on, `zabbix_write` is offered and every change is written to the
+audit log. The extension talks to the Zabbix server named in the URL; it does
+not send monitoring data anywhere else.
+
+The same binary can be configured by hand in `claude_desktop_config.json`. See
+the README for that block and for the other clients.
+
 ## Codex
 
 ```toml

@@ -56,6 +56,8 @@ func problemsList() *opspec.Operation {
 		Summary: "List active Zabbix problems, newest first.",
 		Long: "Suppressed problems are included by default and say which maintenance window hides them. " +
 			"Hiding them silently is how an outage goes unnoticed for weeks.",
+		When: "Use when the user asks what is broken right now, which problems are firing, or whether anything is in alarm. " +
+			"For one event identifier call zabbix_problem; to learn why a notification never arrived call zabbix_alert_why.",
 		Params: []opspec.Param{
 			{Name: "host", Type: opspec.TypeString, Description: "limit to one host; matching is fuzzy", Example: "web01"},
 			{Name: "group", Type: opspec.TypeString, Description: "limit to a host group"},
@@ -133,6 +135,8 @@ func problemsGet() *opspec.Operation {
 		Risk:    safety.RiskRead,
 		Scope:   safety.ScopeRead,
 		Summary: "Show one active problem by event identifier.",
+		When: "Use when the user gives one event identifier and wants that problem's host, severity and state. " +
+			"For the list of what is broken now call zabbix_problems; to learn why its notification did or did not arrive call zabbix_alert_why.",
 		Params: []opspec.Param{
 			{Name: "event", Type: opspec.TypeString, Required: true, Positional: true,
 				Description: "event identifier", Example: "757474"},
@@ -159,6 +163,8 @@ func hostList() *opspec.Operation {
 		Summary: "Find hosts by name fragment, pattern or group.",
 		Long: "Matching is a case-insensitive substring over both the technical and the visible name, " +
 			"and exact matches are listed first. Guessing exact names is the most common way a query comes back empty.",
+		When: "Use when the user is looking for a host and does not have its exact name, or wants the hosts in a group. " +
+			"For a short health check of one host call zabbix_host_status; for a full diagnostic snapshot call zabbix_host_investigate.",
 		Params: []opspec.Param{
 			{Name: "search", Type: opspec.TypeString, Positional: true,
 				Description: "name fragment; * is allowed", Example: "web"},
@@ -232,6 +238,8 @@ func hostStatus() *opspec.Operation {
 		Scope:   safety.ScopeRead,
 		Summary: "Summarise one host: availability, active problems, data freshness, maintenance.",
 		Long:    "An aggregate over several API calls, returned as a handful of fields rather than several thousand characters of configuration.",
+		When: "Use when the user wants a short health check of one named host: whether it is up, whether it has problems, whether data is fresh. " +
+			"For the full diagnostic bundle call zabbix_host_investigate; to search by a name fragment call zabbix_hosts.",
 		Params: []opspec.Param{
 			{Name: "host", Type: opspec.TypeString, Required: true, Positional: true,
 				Description: "host name, fragment or identifier"},
@@ -272,6 +280,8 @@ func hostInvestigate() *opspec.Operation {
 		Summary: "Collect a diagnostic snapshot of one host in a single call.",
 		Long: "Gathers host state, active problems, recent events, silent and unsupported items and maintenance windows. " +
 			"It reports facts and draws no conclusions; interpreting them is the caller's job.",
+		When: "Use when the user asks what is wrong with a named host or wants one diagnostic pass instead of several queries. " +
+			"For a short status line call zabbix_host_status; for hosts Zabbix cannot poll at all call zabbix_unreachable.",
 		Params: []opspec.Param{
 			{Name: "host", Type: opspec.TypeString, Required: true, Positional: true,
 				Description: "host name, fragment or identifier"},
@@ -302,6 +312,8 @@ func metricsLatest() *opspec.Operation {
 		Summary: "Show the newest value of a host's items.",
 		Long: "Values come from history, because item.lastvalue has returned a constant zero for several releases. " +
 			"The history type is derived from each item automatically; querying it wrongly returns nothing rather than an error.",
+		When: "Use when the user wants the current value of an item, such as CPU, disk or a custom metric, on one host. " +
+			"For values across a time window call zabbix_metrics_history; for a host whose items stopped sending data call zabbix_host_investigate.",
 		Params: []opspec.Param{
 			{Name: "host", Type: opspec.TypeString, Required: true, Positional: true, Description: "host name or fragment"},
 			{Name: "search", Type: opspec.TypeString, Description: "item name or key fragment", Example: "cpu"},
@@ -367,6 +379,8 @@ func metricsHistory() *opspec.Operation {
 		Scope:   safety.ScopeRead,
 		Summary: "Read an item's values over a time window, with min, max and average.",
 		Long:    "Windows are written the way operators write them: 30m, 2h, 24h, 7d.",
+		When: "Use when the user asks how a metric behaved over a period, or wants its minimum, average and maximum. " +
+			"For only the newest value call zabbix_metrics_latest; for whether the host itself is unreachable call zabbix_unreachable.",
 		Params: []opspec.Param{
 			{Name: "host", Type: opspec.TypeString, Required: true, Positional: true, Description: "host name or fragment"},
 			{Name: "search", Type: opspec.TypeString, Positional: true, Description: "item name or key fragment", Example: "cpu util"},
@@ -443,6 +457,8 @@ func alertWhy() *opspec.Operation {
 		Long: "Walks the whole chain: suppression, delivery attempts and their errors, trigger actions, " +
 			"media types, and each recipient's media severity filter and active period. " +
 			"Any one of those links can drop a notification without recording an error anywhere.",
+		When: "Use when the user asks why an alert did or did not arrive, or why a notification was missing. " +
+			"For the problem itself call zabbix_problem; to turn a pasted notification into identifiers call zabbix_resolve first.",
 		Params: []opspec.Param{
 			{Name: "event", Type: opspec.TypeString, Required: true, Positional: true,
 				Description: "event identifier", Example: "757474"},
@@ -478,6 +494,8 @@ func resolveAlert() *opspec.Operation {
 		Summary: "Turn the text of a notification into event, host and trigger identifiers.",
 		Long: "Accepts a notification pasted out of a chat client. Without it, an instruction such as " +
 			"\"acknowledge that one\" cannot be acted on, because the identifiers only exist inside the message text.",
+		When: "Use when the user pastes a notification from chat and the event, host or trigger identifier is buried in that text. " +
+			"Once you have the event identifier, call zabbix_problem for the problem or zabbix_alert_why for the delivery chain.",
 		Params: []opspec.Param{
 			{Name: "text", Type: opspec.TypeString, Required: true, Positional: true,
 				Description: "the pasted notification, or a bare event identifier"},
@@ -503,7 +521,9 @@ func unreachable() *opspec.Operation {
 		Scope:   safety.ScopeRead,
 		Summary: "List monitored hosts Zabbix currently cannot poll.",
 		Long:    "Availability lives on the interface: host.available was removed in 5.4, and code still reading it sees nothing at all.",
-		Params:  []opspec.Param{limitParam(50)},
+		When: "Use when the user asks which hosts Zabbix cannot poll, or which agent, SNMP, IPMI or JMX interfaces are down. " +
+			"A host whose interface is up but whose items went silent is not listed here: call zabbix_host_investigate for that, and zabbix_metrics_latest for the newest values.",
+		Params: []opspec.Param{limitParam(50)},
 		Run: func(ctx context.Context, env *opspec.Env, args *opspec.Args) (*output.Result, error) {
 			hosts, truncated, err := env.Service.ListUnreachable(ctx, args.Int("limit"))
 			if err != nil {
@@ -596,6 +616,8 @@ func maintenanceList() *opspec.Operation {
 		Summary: "List maintenance windows, including expired ones.",
 		Long: "Expired windows are shown by default: removing one that has already lapsed is a routine follow-up, " +
 			"and it cannot be done if the window is invisible.",
+		When: "Use when the user asks which maintenance windows exist, which hosts are silenced, or whether a window has expired. " +
+			"To open, extend, end or remove a window call zabbix_plan_create, or zabbix_write when this server offers it.",
 		Params: []opspec.Param{
 			{Name: "host", Type: opspec.TypeString, Description: "only windows covering this host"},
 			{Name: "search", Type: opspec.TypeString, Description: "name fragment"},
