@@ -1,0 +1,396 @@
+[
+ {
+  "name": "zabbix_alert_why",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "event": {
+     "description": "event identifier",
+     "examples": [
+      "757474"
+     ],
+     "type": "string"
+    }
+   },
+   "required": [
+    "event"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_api_call",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "method": {
+     "description": "API method, for example host.get",
+     "examples": [
+      "host.get"
+     ],
+     "type": "string"
+    },
+    "params": {
+     "description": "method parameters as JSON",
+     "examples": [
+      "{\"output\":[\"hostid\",\"host\"],\"limit\":5}"
+     ],
+     "type": "string"
+    }
+   },
+   "required": [
+    "method"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_host_investigate",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "host": {
+     "description": "host name, fragment or identifier",
+     "type": "string"
+    }
+   },
+   "required": [
+    "host"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_host_status",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "host": {
+     "description": "host name, fragment or identifier",
+     "type": "string"
+    }
+   },
+   "required": [
+    "host"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_hosts",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "group": {
+     "description": "limit to a host group",
+     "type": "string"
+    },
+    "limit": {
+     "default": 50,
+     "description": "maximum rows to return, 1 to 500 (default 50); the result reports whether it was truncated",
+     "maximum": 500,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "monitored": {
+     "description": "exclude hosts whose monitoring is disabled",
+     "type": "boolean"
+    },
+    "search": {
+     "description": "name fragment; * is allowed",
+     "examples": [
+      "web"
+     ],
+     "type": "string"
+    }
+   },
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_maintenance_list",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "active": {
+     "description": "hide windows whose period has passed",
+     "type": "boolean"
+    },
+    "host": {
+     "description": "only windows covering this host",
+     "type": "string"
+    },
+    "limit": {
+     "default": 50,
+     "description": "maximum rows to return, 1 to 500 (default 50); the result reports whether it was truncated",
+     "maximum": 500,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "search": {
+     "description": "name fragment",
+     "type": "string"
+    }
+   },
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_metrics_history",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "host": {
+     "description": "host name or fragment",
+     "type": "string"
+    },
+    "items": {
+     "default": 5,
+     "description": "maximum distinct items to read, 1 to 10",
+     "maximum": 10,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "last": {
+     "default": "1h",
+     "description": "how far back to read",
+     "examples": [
+      "24h"
+     ],
+     "pattern": "^[0-9]+(\\.[0-9]+)?(s|m|h|d|w)$",
+     "type": "string"
+    },
+    "limit": {
+     "default": 200,
+     "description": "maximum rows to return, 1 to 500 (default 200); the result reports whether it was truncated",
+     "maximum": 500,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "search": {
+     "description": "item name or key fragment",
+     "examples": [
+      "cpu util"
+     ],
+     "type": "string"
+    }
+   },
+   "required": [
+    "host"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_metrics_latest",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "host": {
+     "description": "host name or fragment",
+     "type": "string"
+    },
+    "limit": {
+     "default": 25,
+     "description": "maximum rows to return, 1 to 500 (default 25); the result reports whether it was truncated",
+     "maximum": 500,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "search": {
+     "description": "item name or key fragment",
+     "examples": [
+      "cpu"
+     ],
+     "type": "string"
+    }
+   },
+   "required": [
+    "host"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_plan_create",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "operation": {
+     "description": "the change to describe",
+     "enum": [
+      "api.call",
+      "events.acknowledge",
+      "maintenance.create",
+      "maintenance.delete",
+      "maintenance.expire",
+      "maintenance.extend",
+      "triggers.disable",
+      "triggers.enable"
+     ],
+     "type": "string"
+    },
+    "params": {
+     "description": "parameters for the operation; call zabbix_plan_create with an unknown parameter to be told the accepted ones",
+     "type": "object"
+    }
+   },
+   "required": [
+    "operation"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_plan_status",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "plan_id": {
+     "description": "identifier returned by zabbix_plan_create",
+     "type": "string"
+    }
+   },
+   "required": [
+    "plan_id"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_problem",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "event": {
+     "description": "event identifier",
+     "examples": [
+      "757474"
+     ],
+     "type": "string"
+    }
+   },
+   "required": [
+    "event"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_problems",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "exclude_suppressed": {
+     "description": "hide problems inside a maintenance window (they are shown by default)",
+     "type": "boolean"
+    },
+    "group": {
+     "description": "limit to a host group",
+     "type": "string"
+    },
+    "host": {
+     "description": "limit to one host; matching is fuzzy",
+     "examples": [
+      "web01"
+     ],
+     "type": "string"
+    },
+    "limit": {
+     "default": 50,
+     "description": "maximum rows to return, 1 to 500 (default 50); the result reports whether it was truncated",
+     "maximum": 500,
+     "minimum": 1,
+     "type": "integer"
+    },
+    "severity": {
+     "description": "minimum severity, as a name or 0-5",
+     "enum": [
+      "not classified",
+      "information",
+      "warning",
+      "average",
+      "high",
+      "disaster"
+     ],
+     "type": "string"
+    },
+    "since": {
+     "description": "only problems that started within this window",
+     "examples": [
+      "24h"
+     ],
+     "pattern": "^[0-9]+(\\.[0-9]+)?(s|m|h|d|w)$",
+     "type": "string"
+    },
+    "unacknowledged": {
+     "description": "only problems nobody has acknowledged",
+     "type": "boolean"
+    }
+   },
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_resolve",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "text": {
+     "description": "the pasted notification, or a bare event identifier",
+     "type": "string"
+    }
+   },
+   "required": [
+    "text"
+   ],
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_unreachable",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "limit": {
+     "default": 50,
+     "description": "maximum rows to return, 1 to 500 (default 50); the result reports whether it was truncated",
+     "maximum": 500,
+     "minimum": 1,
+     "type": "integer"
+    }
+   },
+   "type": "object"
+  }
+ },
+ {
+  "name": "zabbix_write",
+  "inputSchema": {
+   "additionalProperties": false,
+   "properties": {
+    "operation": {
+     "description": "the change to make",
+     "enum": [
+      "api.call",
+      "events.acknowledge",
+      "maintenance.create",
+      "maintenance.delete",
+      "maintenance.expire",
+      "maintenance.extend",
+      "triggers.disable",
+      "triggers.enable"
+     ],
+     "type": "string"
+    },
+    "params": {
+     "description": "parameters for the operation; call zabbix_write with an unknown parameter to be told the accepted ones",
+     "type": "object"
+    }
+   },
+   "required": [
+    "operation"
+   ],
+   "type": "object"
+  }
+ }
+]
