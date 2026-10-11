@@ -289,6 +289,16 @@ https://github.com/stufently/zabbix-ai-cli-mcp/releases/latest
 and open it. Desktop asks for the Zabbix URL, the API token, and whether
 writes are allowed (off by default). See [docs/mcp.md](docs/mcp.md).
 
+The same release publishes `checksums.txt` with the SHA256 of every `.mcpb`.
+Download that file into the same directory as the bundle and check it before
+opening the bundle:
+
+```bash
+sha256sum -c --ignore-missing checksums.txt   # run next to the downloaded .mcpb
+```
+
+On macOS, filter the bundle's line and check it with `shasum -a 256 -c -`.
+
 ### Cursor
 
 `~/.cursor/mcp.json`, or `.cursor/mcp.json` in the project:

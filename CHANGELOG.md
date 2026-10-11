@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- The release attaches SHA256 sums for every `.mcpb` bundle. The `mcpb` job
+  adds one `sha256sum` line per bundle to the `checksums.txt` goreleaser
+  already published, and the README shows how to check a downloaded bundle.
+
 ### Fixed
 
 - MCP tool descriptions no longer name tools the running mode does not
