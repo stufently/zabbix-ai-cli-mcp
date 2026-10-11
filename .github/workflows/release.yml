@@ -34,8 +34,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # The release exists once goreleaser has published the tag. This job only
-  # attaches desktop-extension bundles; it does not publish anywhere else.
+  # The release exists once goreleaser has published the tag. This job
+  # attaches desktop-extension bundles and adds their SHA256 lines to the
+  # checksums.txt goreleaser already uploaded.
   mcpb:
     needs: goreleaser
     runs-on: ubuntu-latest
@@ -45,7 +46,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: Build .mcpb bundles
         run: VERSION="${GITHUB_REF_NAME#v}" bash scripts/build-mcpb.sh
+      - name: Add .mcpb lines to checksums.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "$GITHUB_REF_NAME" --pattern checksums.txt --dir dist-mcpb
+          bash scripts/mcpb-checksums.sh dist-mcpb dist-mcpb/checksums.txt
       - name: Attach .mcpb bundles to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" dist-mcpb/*.mcpb --clobber
+        run: gh release upload "$GITHUB_REF_NAME" dist-mcpb/*.mcpb dist-mcpb/checksums.txt --clobber
