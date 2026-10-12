@@ -57,23 +57,28 @@ args = ["mcp", "--profile", "prod"]
 
 ## Tools
 
-| Tool | Purpose |
-| --- | --- |
-| `zabbix_problems` | Active problems, suppressed ones included and explained |
-| `zabbix_problem` | One problem by event identifier |
-| `zabbix_hosts` | Find hosts by fragment, pattern or group |
-| `zabbix_host_status` | Compact operational state of one host |
-| `zabbix_host_investigate` | Full diagnostic snapshot in one call |
-| `zabbix_metrics_latest` | Newest value of a host's items |
-| `zabbix_metrics_history` | Values over a window, with min, average and max |
-| `zabbix_alert_why` | Why an event did or did not produce a notification |
-| `zabbix_resolve` | A pasted notification to event, host and trigger identifiers |
-| `zabbix_unreachable` | Monitored hosts Zabbix cannot poll |
-| `zabbix_maintenance_list` | Maintenance windows, expired ones included |
-| `zabbix_api_call` | Raw Zabbix API, read methods only |
-| `zabbix_plan_create` | Describe a change without making it |
-| `zabbix_plan_status` | Whether a plan is waiting, applied or gone |
-| `zabbix_write` | Make a change; offered only where `allow_write` permits it |
+| Tool | Purpose | Changes Zabbix | Listed when |
+| --- | --- | --- | --- |
+| `zabbix_problems` | Active problems, suppressed ones included and explained | no | always |
+| `zabbix_problem` | One problem by event identifier | no | always |
+| `zabbix_hosts` | Find hosts by fragment, pattern or group | no | always |
+| `zabbix_host_status` | Compact operational state of one host | no | always |
+| `zabbix_host_investigate` | Full diagnostic snapshot in one call | no | always |
+| `zabbix_metrics_latest` | Newest value of a host's items | no | always |
+| `zabbix_metrics_history` | Values over a window, with min, average and max | no | always |
+| `zabbix_alert_why` | Why an event did or did not produce a notification | no | always |
+| `zabbix_resolve` | A pasted notification to event, host and trigger identifiers | no | always |
+| `zabbix_unreachable` | Monitored hosts Zabbix cannot poll | no | always |
+| `zabbix_maintenance_list` | Maintenance windows, expired ones included | no | always |
+| `zabbix_api_call` | Raw Zabbix API, read methods only | no | always |
+| `zabbix_plan_create` | Describe a change without making it | no; stores a plan for a person to approve | not `--read-only` |
+| `zabbix_plan_status` | Whether a plan is waiting, applied or gone | no | not `--read-only` |
+| `zabbix_write` | Make a change; offered only where `allow_write` permits it | **yes** | `allow_write` is true and not `--read-only` |
+
+`zabbix_write` is the only tool that changes Zabbix and the only one without
+`readOnlyHint`. A test fails the build if any other tool loses that hint, if
+`zabbix_write` is listed while writes are off, or if `--read-only` lists either
+planning tool.
 
 Each schema is generated from the operation registry, so it matches the CLI
 exactly. An unknown parameter is refused with the list of accepted ones.

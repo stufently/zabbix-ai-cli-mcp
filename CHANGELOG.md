@@ -7,6 +7,17 @@
 - The release attaches SHA256 sums for every `.mcpb` bundle. The `mcpb` job
   adds one `sha256sum` line per bundle to the `checksums.txt` goreleaser
   already published, and the README shows how to check a downloaded bundle.
+- The release workflow signs build provenance (GitHub artifact attestations,
+  `actions/attest@v4`) for every archive listed in `checksums.txt`, every
+  `.mcpb` bundle and the container image, whose attestation is also pushed to
+  ghcr. The README shows `gh attestation verify` for each; releases up to 0.4.3
+  have checksums only.
+- README lists the clients and platforms that have actually been run, and says
+  which client blocks have not been exercised.
+- `docs/mcp.md` marks for every tool whether it changes Zabbix and in which mode
+  it is listed. A test pins the desktop extension's read-only default:
+  `allow_write` must default to false and reach the server only from the
+  user's choice.
 
 ### Fixed
 
