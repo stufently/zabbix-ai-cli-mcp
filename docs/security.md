@@ -155,6 +155,15 @@ On Windows those mode bits are not enforced by the operating system, and Go's
 `%AppData%\zabbix-ai-cli-mcp` through the filesystem ACL, or supply the token
 through the environment and keep nothing on disk.
 
+## Release integrity
+
+Every release publishes `checksums.txt` with the SHA256 of each archive and
+`.mcpb` bundle. Releases after 0.4.3 also carry signed build provenance for the
+archives, the bundles and the container image, verifiable with
+`gh attestation verify` against this repository (see the README). A checksum
+proves a download is intact; the attestation proves this repository's release
+workflow built it.
+
 ## Reporting a vulnerability
 
 See [SECURITY.md](../SECURITY.md).

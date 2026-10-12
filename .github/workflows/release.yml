@@ -9,8 +9,11 @@ permissions:
   contents: write
   packages: write
   # Publishing to the MCP registry authenticates with a short-lived OIDC token
-  # minted for this workflow, not with a stored secret.
+  # minted for this workflow, not with a stored secret. The same token is what
+  # Sigstore signs the build provenance attestations with.
   id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   goreleaser:
@@ -33,6 +36,31 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # checksums.txt lists every archive goreleaser uploaded, so attesting
+      # from it signs exactly the files a user downloads, with the digests
+      # they check. `gh attestation verify` then proves an archive was built
+      # by this workflow from this repository.
+      - name: Attest the release archives
+        uses: actions/attest@v4
+        with:
+          subject-checksums: dist/checksums.txt
+      # The image digest is read from the registry the tag was pushed to,
+      # not from a local build, so the attestation names what clients pull.
+      - name: Resolve the published image digest
+        id: image
+        run: |
+          ref="ghcr.io/stufently/zabbix-ai-cli-mcp:${GITHUB_REF_NAME#v}"
+          digest=$(docker buildx imagetools inspect "$ref" --format '{{json .Manifest}}' | jq -r '.digest')
+          case "$digest" in
+            sha256:*) echo "digest=$digest" >> "$GITHUB_OUTPUT" ;;
+            *) echo "no digest for $ref: $digest" >&2; exit 1 ;;
+          esac
+      - name: Attest the container image
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/stufently/zabbix-ai-cli-mcp
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
 
   # The release exists once goreleaser has published the tag. This job
   # attaches desktop-extension bundles and adds their SHA256 lines to the
@@ -42,6 +70,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - uses: actions/checkout@v7
       - name: Build .mcpb bundles
@@ -52,6 +83,10 @@ jobs:
         run: |
           gh release download "$GITHUB_REF_NAME" --pattern checksums.txt --dir dist-mcpb
           bash scripts/mcpb-checksums.sh dist-mcpb dist-mcpb/checksums.txt
+      - name: Attest the .mcpb bundles
+        uses: actions/attest@v4
+        with:
+          subject-path: dist-mcpb/*.mcpb
       - name: Attach .mcpb bundles to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

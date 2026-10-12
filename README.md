@@ -203,6 +203,31 @@ make build      # Linux binary in ./bin, built inside Docker
 make docker     # Linux container image for the MCP server
 ```
 
+### Check where a release came from
+
+`checksums.txt` proves a download is intact, not who built it: whoever could
+replace an archive could replace the checksum file next to it. From the first
+release cut after this section was added, the release workflow also signs build
+provenance for every archive, every `.mcpb` bundle and the container image
+(Sigstore, through GitHub artifact attestations). With the GitHub CLI:
+
+```bash
+verify() {
+  gh attestation verify "$1" --repo stufently/zabbix-ai-cli-mcp \
+    --source-ref "refs/tags/v$VERSION" \
+    --signer-workflow stufently/zabbix-ai-cli-mcp/.github/workflows/release.yml \
+    --deny-self-hosted-runners
+}
+verify "$ARCHIVE"
+verify "zabbix-ai-cli-mcp-${VERSION}-linux-amd64.mcpb"
+verify "oci://ghcr.io/stufently/zabbix-ai-cli-mcp:$VERSION"
+```
+
+A pass means the file was built by this repository's release workflow, on a
+GitHub-hosted runner, from the tag `v$VERSION`: an attested file from another
+release, renamed, fails `--source-ref`. Releases up to and including 0.4.3
+carry checksums only.
+
 ## Configure
 
 ```bash
@@ -535,6 +560,20 @@ such as creating a script and having an action run it.
 
 Yes. It is a normal CLI with human-readable tables, JSON output and documented
 exit codes, so it is equally usable from a shell or a CI job.
+
+## Tested clients and platforms
+
+Only what has actually been run is listed. The client blocks above for Claude
+Desktop, Cursor, Windsurf, Zed and VS Code follow each client's documented MCP
+configuration and have not been exercised by the maintainer; reports are
+welcome.
+
+| Client | OS | How the server runs | Checked |
+| --- | --- | --- | --- |
+| Claude Code 2.1 | Ubuntu 26.04, x86_64 | `ghcr.io/stufently/zabbix-ai-cli-mcp` image over stdio (`docker run -i`) | In daily use since 0.1.0 against Zabbix 7.4.10; `tools/list` re-checked 2026-10-12 |
+| Codex CLI 0.162 | Ubuntu 26.04, x86_64 | binary built with `make build`, stdio | In daily use since 0.3.0 against the same Zabbix; `tools/list` re-checked 2026-10-12 |
+| none (CI) | Ubuntu (GitHub-hosted), x86_64 | unit and race tests, container image start-up | Every pull request |
+| none (CI) | macOS amd64 and arm64, Windows amd64, Linux arm64 | cross-compiled only, never executed | Every pull request |
 
 ## Compatibility
 
