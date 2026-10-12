@@ -10,8 +10,8 @@
 binary.** It gives Claude Code, Claude Desktop, Codex, Cursor and any other
 Model Context Protocol client task-shaped access to Zabbix — what is broken
 right now, why a host is silent, why an alert never arrived — with bounded
-output, a stable JSON contract, and no change to Zabbix without a person's
-approval.
+output, a stable JSON contract, and one setting, `allow_write`, that decides
+whether the agent applies a change or a person approves a plan.
 
 It is for the people who get paged: SRE and DevOps teams running Zabbix who want
 an agent to triage an incident without handing it the whole API.
@@ -312,7 +312,7 @@ Claude Desktop can also install this server in one click. Download the `.mcpb`
 for your operating system from
 https://github.com/stufently/zabbix-ai-cli-mcp/releases/latest
 and open it. Desktop asks for the Zabbix URL, the API token, and whether
-writes are allowed (off by default). See [docs/mcp.md](docs/mcp.md).
+writes are allowed (off by default in the Desktop extension). See [docs/mcp.md](docs/mcp.md).
 
 The same release publishes `checksums.txt` with the SHA256 of every `.mcpb`.
 Download that file into the same directory as the bundle and check it before
