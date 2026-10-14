@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.4] — 2026-10-14
+
 ### Added
 
 - The release attaches SHA256 sums for every `.mcpb` bundle. The `mcpb` job
