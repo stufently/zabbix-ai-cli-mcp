@@ -33,6 +33,13 @@ COPY --from=build /out/zabbix-ai-cli-mcp /usr/local/bin/zabbix-ai-cli-mcp
 COPY --from=build --chown=65532:65532 /out/state /var/lib/zabbix-ai-cli-mcp
 
 ENV ZABBIX_AI_CLI_MCP_STATE_DIR=/var/lib/zabbix-ai-cli-mcp
+
+# With nothing configured, start anyway and answer initialize and tools/list, so
+# a registry that builds and inspects the image with no credentials and no
+# network can see the tools. It supplies no URL or token: every tool call fails
+# with "no Zabbix profile is configured" until the real ones are passed with -e.
+# A URL or token that is set but wrong still stops the server at startup.
+ENV ZABBIX_AI_CLI_MCP_INTROSPECTION=1
 VOLUME /var/lib/zabbix-ai-cli-mcp
 
 USER nonroot:nonroot

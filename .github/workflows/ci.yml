@@ -90,6 +90,19 @@ jobs:
         run: |
           docker run --rm zabbix-ai-cli-mcp:ci plans list | tee /dev/stderr | grep -q '"ok": true'
 
+      # Registries such as Glama build the image and start it with no
+      # environment and no network, then ask for initialize and tools/list.
+      # ZABBIX_AI_CLI_MCP_INTROSPECTION=1 in the image lets it answer; a tool
+      # call must still fail with NO_PROFILE. Killing the `docker run` client
+      # on a timeout does not stop the container, so it is named and
+      # force-removed on exit.
+      - name: The image lists its tools with no configuration
+        run: |
+          name="zbx-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
+          python3 scripts/smoke_mcp.py \
+            docker run --rm -i --network none --name "$name" zabbix-ai-cli-mcp:ci
+
       # GoReleaser builds the release image from a context holding nothing but
       # Dockerfile.release and the compiled binary. Building it any other way
       # here would not have caught the release that failed on a missing go.sum.
@@ -102,6 +115,10 @@ jobs:
           docker rm extract
           docker build -t zabbix-ai-cli-mcp:release-ci /tmp/relctx
           docker run --rm zabbix-ai-cli-mcp:release-ci plans list | grep -q '"ok": true'
+          name="zbx-release-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
+          python3 scripts/smoke_mcp.py \
+            docker run --rm -i --network none --name "$name" zabbix-ai-cli-mcp:release-ci
 
   build:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}

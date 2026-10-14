@@ -2,10 +2,12 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/config"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/mcp"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/opspec"
@@ -36,11 +38,11 @@ func mcpCommand(g *globals) *cobra.Command {
 			// profile is unusable. The environment is also where the write
 			// setting is resolved, so this doubles as the snapshot the tool
 			// list is built from.
-			env, err := envFor(cmd.Context())
+			allowWrite, err := g.mcpStartup(cmd.Context(), httpAddr == "")
 			if err != nil {
 				return err
 			}
-			writable := env.AllowWrite && !readOnly
+			writable := allowWrite && !readOnly
 			// An HTTP endpoint with no bearer token is open to every process
 			// on the machine. That is a defensible default for a read-only
 			// server and not for one that can change Zabbix, so this
@@ -53,7 +55,7 @@ func mcpCommand(g *globals) *cobra.Command {
 			server := mcp.NewServer(mcp.Options{
 				Version:    Version,
 				ReadOnly:   readOnly,
-				AllowWrite: env.AllowWrite,
+				AllowWrite: allowWrite,
 				EnvFor:     envFor,
 			})
 			if httpAddr == "" {
@@ -80,6 +82,50 @@ func mcpCommand(g *globals) *cobra.Command {
 	cmd.Flags().StringSliceVar(&trustedOrigins, "trusted-origin", nil,
 		"browser origin permitted to call the HTTP endpoint")
 	return cmd
+}
+
+// EnvIntrospection lets a stdio server with no Zabbix connection configured at
+// all start anyway and answer initialize and tools/list. The container image
+// sets it so that registries which build the image and inspect it, with no
+// credentials and no network, can see the tools. It never supplies a URL or a
+// token: every tool call still builds its environment and fails with the same
+// "no Zabbix profile is configured" error the server would otherwise exit on.
+const EnvIntrospection = "ZABBIX_AI_CLI_MCP_INTROSPECTION"
+
+// mcpStartup checks the profile before serving and reports whether direct
+// writes are allowed, which decides the tool list.
+//
+// It fails at startup rather than at the first tool call if the profile is
+// unusable. The one exception is EnvIntrospection on stdio when nothing is
+// configured: a URL or token that is present but wrong still stops the server.
+func (g *globals) mcpStartup(ctx context.Context, stdio bool) (bool, error) {
+	env, err := g.buildEnv(ctx)
+	if err == nil {
+		return env.AllowWrite, nil
+	}
+	var e *errs.E
+	if !stdio || os.Getenv(EnvIntrospection) != "1" ||
+		!errors.As(err, &e) || e.Code != errs.CodeNoProfile {
+		return false, err
+	}
+	cfg, cerr := config.Load()
+	if cerr != nil {
+		return false, cerr
+	}
+	// A profile that is named but missing, or a token without a URL, is a
+	// mistake rather than an empty installation, and still stops the server.
+	if len(cfg.Profiles) > 0 || cfg.ActiveProfile != "" || g.profile != "" ||
+		os.Getenv(config.EnvProfile) != "" ||
+		os.Getenv(config.EnvToken) != "" || os.Getenv(config.EnvTokenFile) != "" {
+		return false, err
+	}
+	allowWrite, werr := cfg.WriteAllowed(config.Profile{})
+	if werr != nil {
+		return false, werr
+	}
+	fmt.Fprintf(g.stderr, "mcp: no Zabbix profile is configured; serving the tool list only, "+
+		"every tool call fails until %s and a token are set\n", config.EnvURL)
+	return allowWrite, nil
 }
 
 // bearerToken prefers the environment over the flag. A flag value is visible to

@@ -190,6 +190,13 @@ docker run --rm -i \
   ghcr.io/stufently/zabbix-ai-cli-mcp mcp
 ```
 
+Started with no Zabbix connection configured at all, the image still answers
+`initialize` and `tools/list` over stdio, so registries can inspect it without
+credentials; every tool call then fails with `NO_PROFILE`. The image sets
+`ZABBIX_AI_CLI_MCP_INTROSPECTION=1` for this. Outside the image, or with any
+URL, token or profile set, the server keeps failing at startup when the
+configuration is unusable.
+
 The image runs as a non-root user with a read-only root filesystem. For plans and
 the audit log to survive, mount a writable state directory and point
 `ZABBIX_AI_CLI_MCP_STATE_DIR` at it.

@@ -21,6 +21,17 @@
 
 ### Fixed
 
+- The container image starts and lists its tools with nothing configured.
+  Registries such as Glama build the image, run it with no environment and no
+  network, and ask for `initialize` and `tools/list`; the server used to exit
+  with `NO_PROFILE` instead, so they showed no tools. The image now sets
+  `ZABBIX_AI_CLI_MCP_INTROSPECTION=1`: when no profile, URL or token is set at
+  all, the stdio server starts, logs that it serves the tool list only, and
+  every tool call fails with `NO_PROFILE`. It supplies no placeholder URL or
+  token, so `-e ZABBIX_AI_CLI_MCP_URL`/`_TOKEN`/`_TOKEN_FILE` and a mounted
+  config keep working unchanged, and a URL or token that is set but wrong, a
+  named profile that does not exist, or HTTP mode still stop the server at
+  startup. CI runs `scripts/smoke_mcp.py` against both images.
 - MCP tool descriptions no longer name tools the running mode does not
   register. On a read-only server `zabbix_maintenance_list` and
   `zabbix_api_call` pointed at `zabbix_plan_create` and `zabbix_write`; without
