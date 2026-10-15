@@ -590,3 +590,39 @@ func TestLLDPlanRejectsSameSizeTopologyReplacement(t *testing.T) {
 		}
 	}
 }
+
+func TestMediaStatePlanCannotInvertDirection(t *testing.T) {
+	for _, tc := range []struct{ op, status string }{{"mediatypes.enable", "1"}, {"mediatypes.disable", "0"}} {
+		h := newWritableHarness(t)
+		mediaFixture(h, "1", "0")
+		env := &opspec.Env{Service: service.New(api.New(h.server.URL, testToken)), Profile: "test", AllowWrite: true}
+		op, _ := ops.Lookup(tc.op)
+		args, err := op.Bind(map[string]any{"mediatypeid": "1"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		plan, err := ops.CreatePlan(context.Background(), env, op, args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Re-seal with the opposite status and a risk/confirmation that match it,
+		// so only the operation/status binding can refuse the plan.
+		plan.Params["status"] = tc.status
+		plan.Risk = safety.RiskWrite
+		plan.RequiresConfirmName = ""
+		if tc.status == "1" {
+			plan.Risk = safety.RiskDestructive
+			plan.RequiresConfirmName = "1"
+		}
+		if err = plan.Seal(); err != nil {
+			t.Fatal(err)
+		}
+		_, err = ops.Apply(context.Background(), env, plan, ops.ApplyOptions{Mode: ops.ApplyDirect, Approval: safety.ApprovalMCPWrite})
+		if err == nil || !strings.Contains(err.Error(), "must set status") {
+			t.Fatalf("%s applied status=%s: %v", tc.op, tc.status, err)
+		}
+		if len(h.server.CallsTo("mediatype.update")) != 0 {
+			t.Fatal("inverted plan wrote")
+		}
+	}
+}

@@ -31,6 +31,10 @@ func TestConstrainedUpdateFields(t *testing.T) {
 		{"discoveryrule.update", map[string]any{"itemid": "234350", "enabled_lifetime_type": "2", "delay": "1s"}, false, "", "delay"},
 		{"discoveryrule.update", map[string]any{"itemid": "234350"}, false, "", "at least one"},
 		{"discoveryrule.update", map[string]any{"itemid": "234350", "lifetime_type": 3}, false, "", "lifetime_type"},
+		{"discoveryrule.update", map[string]any{"itemid": "234350", "lifetime": "1h"}, true, RiskDestructive, ""},
+		{"mediatype.update", map[string]any{"mediatypeid": "0", "status": "0"}, false, "", "non-zero"},
+		{"mediatype.update", []any{map[string]any{"mediatypeid": "1", "status": "0"}, map[string]any{"mediatypeid": "1", "status": "1"}}, false, "", "duplicate"},
+		{"discoveryrule.update", []any{map[string]any{"itemid": "7", "lifetime_type": "1"}, map[string]any{"itemid": "7", "lifetime_type": "2"}}, false, "", "duplicate"},
 	} {
 		t.Run(tc.method+tc.reason, func(t *testing.T) {
 			c := ClassifyCall(tc.method, tc.params)
