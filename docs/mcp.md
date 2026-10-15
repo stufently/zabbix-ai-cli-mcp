@@ -120,6 +120,82 @@ The tool list is fixed when the server starts, but the setting is read again on
 every call: configuration tightened after startup is obeyed, and a stale tool
 listing cannot widen anything.
 
+## Media channels and lost LLD resources
+
+These operations are available in both `zabbix_write` and `zabbix_plan_create`.
+They require the `configuration` scope. Planning returns the usual
+`approve_command`; direct writes and terminal approvals use the same audit log.
+
+| Operation | Parameters | Effect |
+| --- | --- | --- |
+| `mediatypes.enable` | `mediatypeid` **or** exact `name` | Set only `status=0`, for any type |
+| `mediatypes.disable` | `mediatypeid` **or** exact `name` | Set only `status=1`; destructive because alert delivery stops |
+| `discoveryrules.set_lost_resources` | `itemid` **or** exact `template` + rule `name`, plus at least one lifecycle field | Change only the requested lost-resource policy fields |
+
+```json
+{"operation":"mediatypes.enable","params":{"mediatypeid":"1"}}
+```
+
+```json
+{
+  "operation": "discoveryrules.set_lost_resources",
+  "params": {
+    "template": "SystemD service monitoring template",
+    "name": "Service Discovery",
+    "enabled_lifetime_type": 2
+  }
+}
+```
+
+The media plan identifies the name, type, current and desired status. Disable
+plans list users from `mediatype.get selectUsers` and actions from
+`action.get mediatypeids` (including `0`, actions configured for all media).
+The action list is conservative: all-media actions may use this channel. Counts and dependency lists reflect what the API user
+can see. Repeating a media state request succeeds even if it is already in that
+state. For a delayed restoration use an external scheduler with the CLI command
+`zabbix-ai-cli-mcp mediatypes enable --mediatypeid 1 --apply` and a profile that
+allows direct writes. For example, once the scheduler is configured, this cron
+entry repeats the restoration daily at 03:30 in the scheduler's timezone:
+
+```cron
+30 3 * * * /absolute/path/zabbix-ai-cli-mcp mediatypes enable --mediatypeid 1 --apply
+```
+
+The MCP process need not stay alive. No timer is installed by these operations.
+If direct writes are disabled, create a fresh plan and approve it at a terminal;
+stored plans expire after 15 minutes, so do not schedule an old approval command.
+
+LLD fields use the Zabbix names: `lifetime_type`, `lifetime`,
+`enabled_lifetime_type`, `enabled_lifetime`. Each type accepts `0` (after the
+corresponding lifetime), `1` (never), or `2` (immediately); numeric modes and
+string-rendered integers are accepted. Lifetime values accept Zabbix durations,
+seconds or user macros. Deletion mode `0` or `2`, and a deletion duration edited
+without a mode, are classed as destructive. Immediate deletion removes item
+history permanently. Disable-only edits leave deletion policy untouched.
+
+The plan distinguishes host and template rules, counts unique linked hosts
+through nested templates, and counts lost **items** belonging to those rules
+using discovery status and scheduled disable/delete timestamps. Other discovered
+resources (for example hosts created by host prototypes) are not part of that
+item count. Effects occur when Zabbix processes discovery; this operation does
+not execute discovery on demand. Returning disable mode to `1` does not re-enable
+items that discovery already disabled.
+
+Raw `api.call` accepts `mediatype.update` with only `mediatypeid` + `status`,
+and `discoveryrule.update` with only `itemid` + the four lifecycle fields. These
+exceptions are classified from their parameters; a method name alone still
+receives the default refusal. They get the same impact plans as the domain
+operations. An object or a non-empty array of objects is accepted, and **any**
+extra field refuses the entire request, including `exec_path`, scripts,
+parameters, SMTP settings, `key_`, filters, prototypes and intervals.
+
+`api.call.params` may be an object/array or a JSON string, including through
+`zabbix_api_call` for reads:
+
+```json
+{"operation":"api.call","params":{"method":"mediatype.update","params":{"mediatypeid":"1","status":"0"}}}
+```
+
 ## Requesting a change instead
 
 `zabbix_plan_create` records an intention without acting on it, and returns the

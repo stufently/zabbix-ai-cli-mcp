@@ -53,7 +53,10 @@ with the Zabbix version you saw it on.
 `internal/safety/registry.go` is an explicit table, not a heuristic. An
 unclassified method is refused rather than guessed at, and objects whose
 configuration is code — scripts, actions, items, media types — are refused for
-writes whatever scope a profile holds. If you need one of those, say what for in
+writes whatever scope a profile holds. The two constrained exceptions are
+`mediatype.update` (ID and status only) and `discoveryrule.update` (ID and lost
+resource lifecycle fields only); the entire payload is validated and their plans
+include domain impact reads. If you need one of those, say what for in
 the pull request; the answer may be a first-class operation instead.
 
 ## Style

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
+	"sort"
 
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
@@ -13,14 +15,17 @@ import (
 // it. Keeping the mapping in one table means a plan file cannot name a method
 // that was never intended to be reachable.
 var planExecution = map[string]string{
-	"maintenance.create": "maintenance.create",
-	"maintenance.extend": "maintenance.update",
-	"maintenance.expire": "maintenance.update",
-	"maintenance.delete": "maintenance.delete",
-	"event.acknowledge":  "event.acknowledge",
-	"trigger.enable":     "trigger.update",
-	"trigger.disable":    "trigger.update",
-	"api.call":           "", // the method travels inside the plan
+	"maintenance.create":                "maintenance.create",
+	"maintenance.extend":                "maintenance.update",
+	"maintenance.expire":                "maintenance.update",
+	"maintenance.delete":                "maintenance.delete",
+	"event.acknowledge":                 "event.acknowledge",
+	"trigger.enable":                    "trigger.update",
+	"trigger.disable":                   "trigger.update",
+	"mediatypes.enable":                 "mediatype.update",
+	"mediatypes.disable":                "mediatype.update",
+	"discoveryrules.set_lost_resources": "discoveryrule.update",
+	"api.call":                          "", // the method travels inside the plan
 }
 
 // CheckPreconditions re-reads the world and reports whether the plan still
@@ -38,6 +43,15 @@ func (s *Service) CheckPreconditions(ctx context.Context, plan *safety.Plan) err
 				"the world changed since the plan was made: expected %d result(s) confirming that %s, found %d",
 				*pc.ExpectCount, pc.Description, len(rows)).
 				WithSuggestion("re-run the command to build a fresh plan")
+		}
+
+		for field, want := range pc.ExpectIDs {
+			got := configurationIDs(rows, field)
+			expected := append([]string{}, want...)
+			sort.Strings(expected)
+			if !slices.Equal(got, expected) {
+				return errs.New(errs.CodePlanStale, errs.ExitFailure, "the world changed since the plan was made: %s IDs no longer match (%s)", field, pc.Description).WithSuggestion("re-run the command to build a fresh plan")
+			}
 		}
 		if len(pc.ExpectField) > 0 {
 			if len(rows) == 0 {

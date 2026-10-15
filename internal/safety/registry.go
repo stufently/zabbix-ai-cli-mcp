@@ -162,6 +162,9 @@ var executableItemTypes = map[int]string{
 // be shown to be harmless. Callers that have no params (listing the accepted
 // methods, for instance) stay on ClassifyMethod.
 func ClassifyCall(method string, params any) Classification {
+	if LimitedUpdate(method) {
+		return classifyLimitedUpdate(method, params)
+	}
 	class := ClassifyMethod(method)
 	if !class.Allowed {
 		return class

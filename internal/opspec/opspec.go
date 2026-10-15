@@ -9,6 +9,7 @@ package opspec
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
@@ -29,6 +30,7 @@ type ParamType string
 // The parameter types an operation may declare.
 const (
 	TypeString     ParamType = "string"
+	TypeJSON       ParamType = "json"
 	TypeInt        ParamType = "integer"
 	TypeBool       ParamType = "boolean"
 	TypeDuration   ParamType = "duration"
@@ -357,6 +359,22 @@ func isEmpty(v any) bool {
 
 func coerce(o *Operation, p Param, raw any) (any, error) {
 	switch p.Type {
+	case TypeJSON:
+		switch v := raw.(type) {
+		case string:
+			if !json.Valid([]byte(v)) {
+				return nil, errs.Usage("%s: %q must be valid JSON", o.CommandPath(), p.Name)
+			}
+			return v, nil
+		case map[string]any, []any:
+			encoded, err := json.Marshal(v)
+			if err != nil {
+				return nil, errs.Usage("%s: %q must be JSON: %v", o.CommandPath(), p.Name, err)
+			}
+			return string(encoded), nil
+		default:
+			return nil, errs.Usage("%s: %q must be a JSON object, array or JSON string", o.CommandPath(), p.Name)
+		}
 	case TypeString:
 		s, ok := stringOf(raw)
 		if !ok {
@@ -483,6 +501,8 @@ func (o *Operation) InputSchema() map[string]any {
 	for _, p := range o.Params {
 		prop := map[string]any{"description": p.Description}
 		switch p.Type {
+		case TypeJSON:
+			prop["anyOf"] = []any{map[string]any{"type": "object"}, map[string]any{"type": "array"}, map[string]any{"type": "string"}}
 		case TypeInt:
 			prop["type"] = "integer"
 			if p.Min != nil {
