@@ -32,6 +32,11 @@ var planExecution = map[string]string{
 // describes it.
 func (s *Service) CheckPreconditions(ctx context.Context, plan *safety.Plan) error {
 	for _, pc := range plan.Preconditions {
+		// A plan file is only fingerprinted, not authenticated: a precondition
+		// is whatever the file says. Only a read may run before approval logic.
+		if class := safety.ClassifyMethod(pc.Method); !class.Allowed || class.Risk != safety.RiskRead {
+			return errs.Denied("plan precondition %q names %q, which is not a read method; build a fresh plan", pc.Description, pc.Method)
+		}
 		var rows []map[string]any
 		if err := s.client.CallIdempotent(ctx, pc.Method, pc.Params, &rows); err != nil {
 			return errs.New(errs.CodePlanStale, errs.ExitFailure,

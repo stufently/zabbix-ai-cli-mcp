@@ -21,6 +21,8 @@
 
 - `api.call.params` accepts a JSON object or array as well as a JSON string;
   the MCP schema advertises these forms. CLI `--params` keeps accepting JSON.
+- A stored plan's preconditions may only call read methods. A plan file edited
+  to name a write method there is refused before anything is sent to Zabbix.
 
 ## [0.4.4] — 2026-10-14
 

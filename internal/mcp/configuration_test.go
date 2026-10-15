@@ -626,3 +626,30 @@ func TestMediaStatePlanCannotInvertDirection(t *testing.T) {
 		}
 	}
 }
+
+func TestStoredPlanPreconditionMustBeRead(t *testing.T) {
+	h := newWritableHarness(t)
+	mediaFixture(h, "1", "1")
+	env := &opspec.Env{Service: service.New(api.New(h.server.URL, testToken)), Profile: "test", AllowWrite: true}
+	op, _ := ops.Lookup("mediatypes.enable")
+	args, err := op.Bind(map[string]any{"mediatypeid": "1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := ops.CreatePlan(context.Background(), env, op, args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan.Preconditions[0].Method = "mediatype.update"
+	plan.Preconditions[0].Params = map[string]any{"mediatypeid": "1", "exec_path": "evil"}
+	if err = plan.Seal(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = ops.Apply(context.Background(), env, plan, ops.ApplyOptions{Mode: ops.ApplyDirect, Approval: safety.ApprovalMCPWrite})
+	if err == nil || !strings.Contains(err.Error(), "not a read method") {
+		t.Fatalf("write precondition ran: %v", err)
+	}
+	if len(h.server.CallsTo("mediatype.update")) != 0 {
+		t.Fatal("precondition wrote")
+	}
+}
