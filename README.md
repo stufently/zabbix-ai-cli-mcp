@@ -333,6 +333,10 @@ On macOS, filter the bundle's line and check it with `shasum -a 256 -c -`.
 
 ### Cursor
 
+[![Add zabbix MCP server to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=zabbix&config=eyJjb21tYW5kIjoiemFiYml4LWFpLWNsaS1tY3AiLCJhcmdzIjpbIm1jcCJdLCJlbnYiOnsiWkFCQklYX0FJX0NMSV9NQ1BfVVJMIjoiaHR0cHM6Ly96YWJiaXguZXhhbXBsZS5jb20iLCJaQUJCSVhfQUlfQ0xJX01DUF9UT0tFTiI6InlvdXItYXBpLXRva2VuIn19)
+
+The button runs `zabbix-ai-cli-mcp` from your `PATH` (see [Install](#install)); after installing, put your URL and token in place of the placeholders in `~/.cursor/mcp.json`. Or add the block below by hand.
+
 `~/.cursor/mcp.json`, or `.cursor/mcp.json` in the project:
 
 ```json
