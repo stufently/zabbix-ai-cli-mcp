@@ -61,6 +61,8 @@ tool absorbs them behind commands that describe the task instead of the endpoint
 | `unreachable` | Monitored hosts Zabbix cannot poll, with the error it recorded |
 | `metrics latest` / `history` | Values with the right history type, human units and `min/avg/max` |
 | `maintenance` | Open, extend, end or remove windows, with host patterns like `ms*` |
+| `mediatypes enable` / `disable` | Restore or stop alert delivery by changing only a media type's status |
+| `discoveryrules set-lost-resources` | Adjust lost LLD resource disable/delete policy with an impact plan |
 | `api call` | The escape hatch, under the same rules |
 
 ## Safety
@@ -121,6 +123,11 @@ Expires: 2026-08-21T05:54:22Z
 Nothing has changed yet.
 To apply it: zabbix-ai-cli-mcp approve pl_cc89d2e87d15
 ```
+
+Media channel state and lost LLD resource policies also use this approval/audit
+path. Media state requests are idempotent for external cron use; LLD plans show
+host scope and lost-item counts and flag history deletion as destructive. See
+[parameters and examples](docs/mcp.md#media-channels-and-lost-lld-resources).
 
 Before a plan runs, its parameters are re-hashed, its deadline checked and its
 preconditions re-read from Zabbix. A window that has been replaced since the plan

@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Added
+
+- `mediatypes.enable` / `mediatypes.disable` by ID or exact name, including
+  Script and Webhook media types. Plans show type and state; disabling lists
+  visible users/actions and warns that delivery stops. State requests are
+  idempotent and can be repeated by an external scheduler.
+- `discoveryrules.set_lost_resources` by rule ID or template + rule name.
+  Plans describe the four lifecycle fields, linked hosts (including nested
+  templates), lost items and scheduled disable/delete counts. Deletion policy
+  changes are destructive and warn about permanent history loss.
+- Both capabilities use the existing plan/terminal approval, direct-write,
+  scope, stale-state check and audit paths. Raw `mediatype.update` and
+  `discoveryrule.update` accept only the same constrained fields; mixed unsafe
+  requests are refused in full and stored payloads are checked again on apply.
+
+### Fixed
+
+- `api.call.params` accepts a JSON object or array as well as a JSON string;
+  the MCP schema advertises these forms. CLI `--params` keeps accepting JSON.
+- A stored plan's preconditions may only call read methods. A plan file edited
+  to name a write method there is refused before anything is sent to Zabbix.
+
 ## [0.4.4] — 2026-10-14
 
 ### Added

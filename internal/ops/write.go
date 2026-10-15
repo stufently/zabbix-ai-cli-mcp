@@ -217,15 +217,17 @@ func apiCall() *opspec.Operation {
 		Summary: "Call a Zabbix API method directly.",
 		Long: "Read methods run immediately. Write methods produce a plan and go through approval like every other change. " +
 			"A method that is not in the risk registry is refused rather than guessed at. " +
-			"Over MCP this tool is read-only.",
+			"The constrained exceptions are mediatype.update (mediatypeid + status only) and discoveryrule.update " +
+			"(itemid + lifetime_type/lifetime/enabled_lifetime_type/enabled_lifetime only); prefer the domain operations. " +
+			"The params argument accepts an object, array or JSON string. Over MCP this tool is read-only.",
 		When: "Use when no high-level tool covers the question and a read method such as host.get is required. " +
 			"For problems, hosts, metrics or alert delivery call the matching zabbix tool instead.",
 		Change: "A write through this tool is refused; to make one,",
 		Params: []opspec.Param{
 			{Name: "method", Type: opspec.TypeString, Required: true, Positional: true,
 				Description: "API method, for example host.get", Example: "host.get"},
-			{Name: "params", Type: opspec.TypeString,
-				Description: "method parameters as JSON", Example: `{"output":["hostid","host"],"limit":5}`},
+			{Name: "params", Type: opspec.TypeJSON,
+				Description: "method parameters as a JSON object or JSON string (arrays also accepted)", Example: `{"output":["hostid","host"],"limit":5}`},
 		},
 		Run: func(ctx context.Context, env *opspec.Env, args *opspec.Args) (*output.Result, error) {
 			params, err := service.ParseParams(args.String("params"))

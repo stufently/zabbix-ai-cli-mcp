@@ -61,6 +61,8 @@ type Precondition struct {
 	Params      map[string]any `json:"params"`
 	ExpectCount *int           `json:"expect_count,omitempty"`
 	ExpectField map[string]any `json:"expect_field,omitempty"`
+	// ExpectIDs protects a multi-object target from same-size replacements.
+	ExpectIDs map[string][]string `json:"expect_ids,omitempty"`
 }
 
 // Plan is a change that has been described but not made.

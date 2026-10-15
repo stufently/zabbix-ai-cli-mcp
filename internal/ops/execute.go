@@ -201,6 +201,10 @@ func Apply(ctx context.Context, env *opspec.Env, plan *safety.Plan, opts ApplyOp
 			plan.ID, plan.Risk, plan.Scope, plan.Operation, risk, scope).
 			WithSuggestion("build the plan again rather than editing a stored one")
 	}
+
+	if expected, constrained := constrainedConfirmTarget(plan); constrained && plan.RequiresConfirmName != expected {
+		return nil, errs.Denied("plan %s must require confirmation of target %q; build a fresh plan", plan.ID, expected)
+	}
 	if err := CheckPlanScope(env, plan); err != nil {
 		return nil, err
 	}
@@ -307,10 +311,31 @@ func Apply(ctx context.Context, env *opspec.Env, plan *safety.Plan, opts ApplyOp
 // shares one registry entry, so the classification has to be recomputed from
 // the method name the plan carries.
 func authoritativeRiskAndScope(op *opspec.Operation, plan *safety.Plan) (safety.Risk, string, error) {
+	method := ""
+	switch plan.Operation {
+	case "mediatypes.enable", "mediatypes.disable":
+		method = "mediatype.update"
+		want := "0"
+		if plan.Operation == "mediatypes.disable" {
+			want = "1"
+		}
+		if fmt.Sprint(plan.Params["status"]) != want {
+			return "", "", errs.Denied("%s must set status=%s", plan.Operation, want)
+		}
+	case "discoveryrules.set_lost_resources":
+		method = "discoveryrule.update"
+	}
+	if method != "" {
+		class := safety.ClassifyCall(method, plan.Params)
+		if !class.Allowed {
+			return "", "", errs.Denied("plan %s: %s", plan.ID, class.Reason)
+		}
+		return class.Risk, class.Scope, nil
+	}
 	if plan.Operation != "api.call" {
 		return op.Risk, op.Scope, nil
 	}
-	method, _ := plan.Params["method"].(string)
+	method, _ = plan.Params["method"].(string)
 	// The same gate the plan passed when it was written, applied again from
 	// the stored params: a plan may have been sealed by a build whose registry
 	// had no item type check, and it is this build that would run it.
@@ -345,4 +370,31 @@ func planOperationName(plan *safety.Plan) string {
 		return plan.Operation
 	}
 	return plan.Operation
+}
+
+// A re-sealed plan may not remove the target echo from a constrained destructive
+// change. Derive it from the validated operation and payload instead of the file.
+func constrainedConfirmTarget(plan *safety.Plan) (string, bool) {
+	field := ""
+	switch plan.Operation {
+	case "mediatypes.enable", "mediatypes.disable":
+		field = "mediatypeid"
+	case "discoveryrules.set_lost_resources":
+		field = "itemid"
+	case "api.call":
+		method, _ := plan.Params["method"].(string)
+		if !safety.LimitedUpdate(method) {
+			return "", false
+		}
+		if plan.Risk == safety.RiskDestructive {
+			return method, true
+		}
+		return "", true
+	default:
+		return "", false
+	}
+	if plan.Risk == safety.RiskDestructive {
+		return fmt.Sprint(plan.Params[field]), true
+	}
+	return "", true
 }

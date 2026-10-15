@@ -52,6 +52,9 @@ func (s *Service) PlanRawCall(ctx context.Context, profile, method string, param
 	if class.Risk == safety.RiskRead {
 		return nil, errs.Usage("%s is a read method; it runs immediately and needs no plan", method)
 	}
+	if safety.LimitedUpdate(method) {
+		return s.planLimitedRawCall(ctx, profile, method, params, class)
+	}
 	plan, err := safety.NewPlan("api.call", profile, class.Risk, class.Scope)
 	if err != nil {
 		return nil, err
