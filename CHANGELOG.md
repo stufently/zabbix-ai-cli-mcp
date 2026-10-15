@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-15
+
 ### Added
 
 - `mediatypes.enable` / `mediatypes.disable` by ID or exact name, including
