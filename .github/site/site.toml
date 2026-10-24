@@ -1,0 +1,53 @@
+# Site config for .github/site/build.py. Everything else comes from README.md.
+name = "Zabbix AI CLI MCP"
+title = "Zabbix AI CLI MCP — Zabbix MCP server and CLI"
+headline = "Zabbix MCP server and command-line client in one Go binary"
+description = "Give Claude Code, Codex, Cursor and other MCP clients task-shaped access to Zabbix 6.4+: problems, host checks, missed alerts. Apache-2.0."
+lang = "en"
+keywords = ["zabbix mcp", "zabbix mcp server", "mcp server", "zabbix cli", "zabbix api", "claude code", "codex", "sre", "devops", "monitoring"]
+license = "Apache-2.0"
+license_url = "https://www.apache.org/licenses/LICENSE-2.0"
+category = "DeveloperApplication"
+os = "Linux, macOS, Windows"
+programming_language = "Go"
+eyebrow = "Open source · Apache-2.0 · Zabbix 6.4+"
+same_as = ["https://pkg.go.dev/github.com/stufently/zabbix-ai-cli-mcp"]
+
+# README "## <name>" sections shown on the home page, in this order (exact titles).
+landing_sections = ["Install", "Safety", "Example prompts"]
+
+# Extra markdown pages besides README; top-level docs/*.md are added automatically.
+pages = []
+
+features = [
+  "problems list: what is broken now, including suppressed problems with the maintenance window that hides them named.",
+  "host investigate: host state, active problems, recent events, silent and unsupported items and maintenance in one call.",
+  "alert why: why a notification did or did not arrive — suppression, delivery attempts, actions, media types, severity filters.",
+  "One setting, allow_write, decides whether the agent applies a change or a person approves a plan at a terminal; every applied change is audited.",
+  "Fifteen MCP tools, not two hundred, with bounded output and a stable JSON contract; stdio or streamable HTTP.",
+  "It never contacts a language model: it talks to Zabbix and prints JSON, and also works as a normal CLI.",
+]
+
+[[faq]]
+q = "What is a Zabbix MCP server?"
+a = "A small program that exposes Zabbix to an AI client over the Model Context Protocol, so Claude, Codex, Cursor and similar clients query problems, hosts, items, events and maintenance as tools instead of guessing at curl calls against the JSON-RPC API."
+
+[[faq]]
+q = "Can an AI agent change my Zabbix through this?"
+a = "That is decided by allow_write. It is on by default: the agent can open a maintenance window or acknowledge an event itself, every change audited and bounded by the profile's scopes and the risk registry. With allow_write = false a write only produces a plan, and a person applies it with zabbix-ai-cli-mcp approve <plan-id> in their own terminal."
+
+[[faq]]
+q = "Does it send my monitoring data to an AI provider?"
+a = "No. The program never contacts a language model. It talks to Zabbix and prints JSON; what your MCP client does with that output is between you and your client."
+
+[[faq]]
+q = "Which Zabbix versions are supported?"
+a = "Zabbix 6.4 and newer, because bearer-token authentication arrived in 6.4 and is the only scheme implemented. It is developed and tested against Zabbix 7.4."
+
+[[faq]]
+q = "Do I need Go installed?"
+a = "No. Each tagged release publishes archives for Linux, macOS and Windows on amd64 and arm64 with checksums, plus a container image on ghcr.io. make build compiles inside Docker; go install is there for a host-native binary with Go 1.25 or newer."
+
+[[faq]]
+q = "Which AI clients does it work with?"
+a = "Any MCP client. The README has configs for Claude Code, Claude Desktop, Cursor, Windsurf, Zed, Codex and VS Code; Claude Code and Codex CLI are in daily use, the other client blocks follow each client's documented configuration."
