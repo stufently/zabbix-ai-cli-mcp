@@ -3,3 +3,4 @@
 /dist-mcpb/
 *.test
 coverage.out
+_site/
