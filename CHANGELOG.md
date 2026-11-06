@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Build toolchain pins moved from Go 1.27.2 to 1.27.3 (Dockerfile, Makefile,
+  `scripts/build-mcpb.sh`, CI and release workflows): govulncheck in CI flagged
+  GO-2026-6809 (crypto/x509, standard library), fixed in 1.27.3. The `go`
+  directive stays at 1.25.0 as a lower bound on consumers.
+
 ## [0.5.0] — 2026-10-15
 
 ### Added

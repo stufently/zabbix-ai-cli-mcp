@@ -17,7 +17,7 @@ if ! printf '%s\n' "$VERSION" | grep -Eq '^[0-9A-Za-z][0-9A-Za-z._+-]*$'; then
   exit 1
 fi
 
-GO_IMAGE=golang:1.27.2
+GO_IMAGE=golang:1.27.3
 NODE_IMAGE=node:24.21.0-slim
 MCPB_CLI=@anthropic-ai/mcpb@2.1.2
 ROOT=$PWD
