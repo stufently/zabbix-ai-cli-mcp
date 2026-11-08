@@ -249,8 +249,11 @@ for, which makes it the piece most likely to be cited by both people and models.
 
 ### Bigger, optional
 
-- [ ] A `.mcpb` bundle for Claude Desktop — one-click install removes the
-      largest adoption barrier for non-technical users
+- [x] A `.mcpb` bundle for Claude Desktop — done in 0.4.3 (2026-10-10):
+      `mcpb/manifest.json`, `scripts/build-mcpb.sh` (Go and mcpb CLI in Docker),
+      the `mcpb` job in `release.yml` attaches six bundles plus SHA256 sums to
+      each release; v0.5.0 carries them. Rebuilt clean on 2026-11-08 with
+      Go 1.27.3 and mcpb 2.1.2 (latest on npm).
 - [ ] GitHub Pages from `docs/`: real indexable URLs, `llms.txt` and schema.org
       markup instead of a single README. Roughly a couple of hours' work and the
       largest remaining lever for ordinary search.
