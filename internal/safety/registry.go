@@ -170,6 +170,12 @@ func ClassifyCall(method string, params any) Classification {
 		return class
 	}
 	object, action, ok := strings.Cut(strings.ToLower(strings.TrimSpace(method)), ".")
+	if ok && action == "get" && selectsMacros(params) {
+		// usermacro.get is denied for what macro values hold; host.get,
+		// template.get and hostprototype.get return the same values through
+		// selectMacros, and must not be the side door around that refusal.
+		return Classification{Allowed: false, Reason: "selectMacros returns macro values, " + deniedMethods["usermacro.get"]}
+	}
 	if !ok || object != "item" || action == "get" {
 		return class
 	}
@@ -182,6 +188,21 @@ func ClassifyCall(method string, params any) Classification {
 		return Classification{Allowed: false, Reason: reason}
 	}
 	return class
+}
+
+// selectsMacros reports whether read params ask for user macros to be
+// embedded in the result.
+func selectsMacros(params any) bool {
+	m, ok := params.(map[string]any)
+	if !ok {
+		return false
+	}
+	for k := range m {
+		if strings.EqualFold(k, "selectMacros") {
+			return true
+		}
+	}
+	return false
 }
 
 // refuseItemWrite returns the reason an item write is refused, or "" to allow it.

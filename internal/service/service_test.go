@@ -10,6 +10,7 @@ import (
 
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/zbxtest"
 )
@@ -886,5 +887,106 @@ func TestResolveHostFallsBackWhenANumericNameIsNotAnID(t *testing.T) {
 	}
 	if host.Name != "1000000000000000000001" {
 		t.Errorf("resolved %q", host.Name)
+	}
+}
+
+// A host named exactly must not widen into every host whose name contains it:
+// this list decides which machines stop alerting.
+func TestMaintenanceCreatePrefersAnExactHostName(t *testing.T) {
+	srv := zbxtest.New(t, "7.4.10")
+	srv.Reply("host.get", []any{
+		zbxtest.Host("1", "dx1", nil),
+		zbxtest.Host("2", "dx10", nil),
+		zbxtest.Host("3", "dx11", nil),
+	})
+	svc := newService(t, srv)
+
+	hostIDs := func(hosts ...string) []string {
+		plan, err := svc.PlanMaintenanceCreate(context.Background(), "test", service.MaintenanceCreateRequest{
+			Name: "patching", Hosts: hosts, Duration: time.Hour,
+		})
+		if err != nil {
+			t.Fatalf("PlanMaintenanceCreate(%v): %v", hosts, err)
+		}
+		refs, _ := plan.Params["hosts"].([]map[string]any)
+		ids := make([]string, 0, len(refs))
+		for _, r := range refs {
+			ids = append(ids, r["hostid"].(string))
+		}
+		return ids
+	}
+	if got := hostIDs("dx1"); len(got) != 1 || got[0] != "1" {
+		t.Errorf("dx1 resolved to hosts %v, want only the exactly named host", got)
+	}
+	if got := hostIDs("DX1"); len(got) != 1 || got[0] != "1" {
+		t.Errorf("DX1 resolved to hosts %v, want the exact name in any case", got)
+	}
+	// A wildcard asks for the widening.
+	if got := hostIDs("dx1*"); len(got) != 3 {
+		t.Errorf("dx1* resolved to hosts %v, want all three", got)
+	}
+}
+
+// Extending rewrites the time periods as one continuous period. Done to a
+// weekly window, that would silence its hosts for months.
+func TestExtendRefusesARecurringWindow(t *testing.T) {
+	srv := zbxtest.New(t, "7.4.10")
+	since := time.Now().Add(-30 * 24 * time.Hour).Unix()
+	srv.Reply("maintenance.get", []any{map[string]any{
+		"maintenanceid": "7", "name": "weekly backups", "maintenance_type": "0",
+		"active_since": itoa64(since), "active_till": itoa64(since + 365*86400),
+		"hosts": []any{}, "hostgroups": []any{},
+		"timeperiods": []any{map[string]any{
+			"timeperiod_type": "3", "start_date": "0", "period": "7200",
+		}},
+	}})
+	svc := newService(t, srv)
+
+	if _, err := svc.PlanMaintenanceExtend(context.Background(), "prod", "7", 24*time.Hour); err == nil {
+		t.Fatal("extending a recurring window must be refused")
+	}
+}
+
+func TestExtendKeepsAOneTimePeriodsOwnStart(t *testing.T) {
+	srv := zbxtest.New(t, "7.4.10")
+	since := time.Now().Add(-2 * time.Hour).Truncate(time.Minute).Unix()
+	start := since + 3600
+	srv.Reply("maintenance.get", []any{map[string]any{
+		"maintenanceid": "7", "name": "move", "maintenance_type": "0",
+		"active_since": itoa64(since), "active_till": itoa64(since + 86400),
+		"hosts": []any{}, "hostgroups": []any{},
+		"timeperiods": []any{map[string]any{
+			"timeperiod_type": "0", "start_date": itoa64(start), "period": "7200",
+		}},
+	}})
+	svc := newService(t, srv)
+
+	plan, err := svc.PlanMaintenanceExtend(context.Background(), "prod", "7", time.Hour)
+	if err != nil {
+		t.Fatalf("PlanMaintenanceExtend: %v", err)
+	}
+	periods, _ := plan.Params["timeperiods"].([]map[string]any)
+	if len(periods) != 1 || periods[0]["start_date"] != start {
+		t.Errorf("timeperiods = %v, want the period to keep starting at %d", plan.Params["timeperiods"], start)
+	}
+}
+
+// A precondition is whatever a resealed plan file says, so it passes the same
+// parameter checks as a raw read: it must not fetch macro values either.
+func TestPreconditionsCannotEmbedMacros(t *testing.T) {
+	srv := zbxtest.New(t, "7.4.10")
+	srv.Reply("host.get", []any{map[string]any{"hostid": "1", "macros": []any{}}})
+	svc := newService(t, srv)
+
+	plan := &safety.Plan{Preconditions: []safety.Precondition{{
+		Description: "host exists",
+		Method:      "host.get",
+		Params:      map[string]any{"hostids": []any{"1"}, "selectMacros": "extend"},
+	}}}
+	if err := svc.CheckPreconditions(context.Background(), plan); err == nil {
+		t.Fatal("a precondition selecting macros must be refused")
+	}
+	if calls := srv.CallsTo("host.get"); len(calls) != 0 {
+		t.Fatalf("host.get reached Zabbix %d times", len(calls))
 	}
 }

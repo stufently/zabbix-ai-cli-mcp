@@ -667,3 +667,68 @@ func TestApplyRefusesAConfirmThatNamesSomethingElse(t *testing.T) {
 		t.Fatal("the change ran despite a confirmation naming something else")
 	}
 }
+
+func eventFortyTwo(h *harness) {
+	h.server.Reply("event.get", []any{map[string]any{
+		"eventid": "42", "clock": "1787000000", "name": "Disk full", "severity": "4",
+		"acknowledged": "0", "value": "1", "objectid": "9", "r_eventid": "0",
+		"hosts": []any{map[string]any{"hostid": "10", "name": "db1"}},
+	}})
+	h.server.Reply("event.acknowledge", map[string]any{"eventids": []any{"42"}})
+}
+
+// Closing a problem is destructive, so the plan says so. The registry entry
+// for events.acknowledge is a plain write; the gate must derive the real class
+// from the action rather than refuse every close as a tampered plan.
+func TestClosingAnEventCanBeApplied(t *testing.T) {
+	h := newHarness(t, config.ScopeAcknowledge)
+	eventFortyTwo(h)
+
+	r := h.run("events", "acknowledge", "42", "--operations", "close", "--apply", "--json")
+	if r.code != errs.ExitOK {
+		t.Fatalf("exit = %d, stderr: %s\n%s", r.code, r.stderr, r.stdout)
+	}
+	calls := h.server.CallsTo("event.acknowledge")
+	if len(calls) != 1 {
+		t.Fatalf("event.acknowledge was called %d times", len(calls))
+	}
+	if action, _ := calls[0].Params["action"].(float64); int(action)&1 == 0 {
+		t.Errorf("action = %v, want the close bit set", calls[0].Params["action"])
+	}
+}
+
+// A stored close needs the event named back like any other destructive plan.
+func TestApprovingAnEventCloseNeedsTheEventNamedBack(t *testing.T) {
+	h := newHarness(t, config.ScopeAcknowledge)
+	eventFortyTwo(h)
+
+	r := h.run("events", "acknowledge", "42", "--operations", "close", "--json")
+	planID := r.envelope(t)["data"].(map[string]any)["plan_id"].(string)
+
+	r = h.run("approve", planID, "--yes", "--json")
+	if r.code != errs.ExitApprovalRequired {
+		t.Fatalf("exit = %d, want %d\n%s", r.code, errs.ExitApprovalRequired, r.stdout)
+	}
+	if calls := h.server.CallsTo("event.acknowledge"); len(calls) != 0 {
+		t.Fatal("an event was closed without the confirmation")
+	}
+	r = h.run("approve", planID, "--yes", "--confirm", "42", "--json")
+	if r.code != errs.ExitOK {
+		t.Fatalf("exit = %d, stderr: %s\n%s", r.code, r.stderr, r.stdout)
+	}
+	if calls := h.server.CallsTo("event.acknowledge"); len(calls) != 1 {
+		t.Fatalf("event.acknowledge was called %d times", len(calls))
+	}
+}
+
+func TestRawApiCallRefusesToEmbedMacros(t *testing.T) {
+	h := newHarness(t)
+	h.server.Reply("host.get", []any{map[string]any{"hostid": "1", "host": "web01"}})
+	r := h.run("api", "call", "host.get", "--params", `{"output":["hostid"],"selectMacros":"extend"}`, "--json")
+	if r.code == errs.ExitOK {
+		t.Fatalf("host.get with selectMacros ran: %s", r.stdout)
+	}
+	if calls := h.server.CallsTo("host.get"); len(calls) != 0 {
+		t.Fatalf("host.get reached Zabbix %d times", len(calls))
+	}
+}
