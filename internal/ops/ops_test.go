@@ -315,3 +315,34 @@ func TestDirectWritesAreRefusedWhenConfigurationSaysSo(t *testing.T) {
 		t.Errorf("a direct write must be allowed when the setting is on: %v", err)
 	}
 }
+
+// A plan file can be rewritten and resealed by the process that made it. One
+// that closes a problem while calling itself a plain write, or that drops the
+// event echo, must be refused before anything reaches Zabbix.
+func TestAResealedEventClosePlanCannotShedItsClass(t *testing.T) {
+	op, ok := Lookup("events.acknowledge")
+	if !ok {
+		t.Fatal("events.acknowledge is missing from the registry")
+	}
+	build := func(risk safety.Risk, confirm string) *safety.Plan {
+		plan, err := safety.NewPlan("event.acknowledge", "prod", risk, safety.ScopeAcknowledge)
+		if err != nil {
+			t.Fatal(err)
+		}
+		plan.Params = map[string]any{"eventids": []any{"42"}, "action": float64(3)}
+		plan.RequiresConfirmName = confirm
+		return plan
+	}
+
+	if risk, _, err := authoritativeRiskAndScope(op, build(safety.RiskWrite, "")); err != nil || risk != safety.RiskDestructive {
+		t.Errorf("a close must be classed destructive whatever the file says: risk=%s err=%v", risk, err)
+	}
+	if want, constrained := constrainedConfirmTarget(build(safety.RiskDestructive, "")); !constrained || want != "42" {
+		t.Errorf("a destructive close must require the event ID: want=%q constrained=%v", want, constrained)
+	}
+	ack := build(safety.RiskWrite, "")
+	ack.Params["action"] = 2
+	if risk, _, err := authoritativeRiskAndScope(op, ack); err != nil || risk != safety.RiskWrite {
+		t.Errorf("an acknowledgement is a plain write: risk=%s err=%v", risk, err)
+	}
+}

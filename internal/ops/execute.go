@@ -324,6 +324,18 @@ func authoritativeRiskAndScope(op *opspec.Operation, plan *safety.Plan) (safety.
 		}
 	case "discoveryrules.set_lost_resources":
 		method = "discoveryrule.update"
+	case "event.acknowledge":
+		// One registry entry covers every event update, but closing a problem
+		// is destructive and the rest are not. The class follows the action
+		// mask the plan will actually send, not the entry and not the file.
+		closes, err := eventPlanCloses(plan)
+		if err != nil {
+			return "", "", err
+		}
+		if closes {
+			return safety.RiskDestructive, op.Scope, nil
+		}
+		return safety.RiskWrite, op.Scope, nil
 	}
 	if method != "" {
 		class := safety.ClassifyCall(method, plan.Params)
@@ -348,6 +360,24 @@ func authoritativeRiskAndScope(op *opspec.Operation, plan *safety.Plan) (safety.
 		return "", "", errs.Denied("plan %s calls %q, which is refused: %s", plan.ID, method, reason)
 	}
 	return class.Risk, class.Scope, nil
+}
+
+// eventPlanCloses reads the close bit from an event plan's action mask. The
+// mask is an int in a fresh plan and a float64 once read back from its file.
+func eventPlanCloses(plan *safety.Plan) (bool, error) {
+	var mask int
+	switch v := plan.Params["action"].(type) {
+	case int:
+		mask = v
+	case float64:
+		if v != float64(int(v)) {
+			return false, errs.Denied("plan %s has a malformed event action", plan.ID)
+		}
+		mask = int(v)
+	default:
+		return false, errs.Denied("plan %s has no event action", plan.ID)
+	}
+	return mask&1 != 0, nil
 }
 
 // planOperationName maps a plan back to its registry entry. The raw API
@@ -381,6 +411,22 @@ func constrainedConfirmTarget(plan *safety.Plan) (string, bool) {
 		field = "mediatypeid"
 	case "discoveryrules.set_lost_resources":
 		field = "itemid"
+	case "event.acknowledge":
+		if plan.Risk != safety.RiskDestructive {
+			return "", true
+		}
+		ids, _ := plan.Params["eventids"].([]any)
+		if typed, ok := plan.Params["eventids"].([]string); ok {
+			for _, id := range typed {
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) != 1 {
+			// An event plan always names exactly one event. Anything else
+			// matches no confirmation name, so the plan is refused.
+			return "\x00invalid", true
+		}
+		return fmt.Sprint(ids[0]), true
 	case "api.call":
 		method, _ := plan.Params["method"].(string)
 		if !safety.LimitedUpdate(method) {
