@@ -10,6 +10,7 @@ import (
 
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/api"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/errs"
+	"github.com/stufently/zabbix-ai-cli-mcp/internal/safety"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/service"
 	"github.com/stufently/zabbix-ai-cli-mcp/internal/zbxtest"
 )
@@ -967,5 +968,25 @@ func TestExtendKeepsAOneTimePeriodsOwnStart(t *testing.T) {
 	periods, _ := plan.Params["timeperiods"].([]map[string]any)
 	if len(periods) != 1 || periods[0]["start_date"] != start {
 		t.Errorf("timeperiods = %v, want the period to keep starting at %d", plan.Params["timeperiods"], start)
+	}
+}
+
+// A precondition is whatever a resealed plan file says, so it passes the same
+// parameter checks as a raw read: it must not fetch macro values either.
+func TestPreconditionsCannotEmbedMacros(t *testing.T) {
+	srv := zbxtest.New(t, "7.4.10")
+	srv.Reply("host.get", []any{map[string]any{"hostid": "1", "macros": []any{}}})
+	svc := newService(t, srv)
+
+	plan := &safety.Plan{Preconditions: []safety.Precondition{{
+		Description: "host exists",
+		Method:      "host.get",
+		Params:      map[string]any{"hostids": []any{"1"}, "selectMacros": "extend"},
+	}}}
+	if err := svc.CheckPreconditions(context.Background(), plan); err == nil {
+		t.Fatal("a precondition selecting macros must be refused")
+	}
+	if calls := srv.CallsTo("host.get"); len(calls) != 0 {
+		t.Fatalf("host.get reached Zabbix %d times", len(calls))
 	}
 }
