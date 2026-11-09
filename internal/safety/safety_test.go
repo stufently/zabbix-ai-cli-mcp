@@ -540,3 +540,20 @@ func TestClassifyCallMatchesClassifyMethodWhenRefused(t *testing.T) {
 		}
 	}
 }
+
+// usermacro.get is refused for what macros hold. The objects that embed
+// macros on request must not hand the same values back through selectMacros.
+func TestReadsThatEmbedMacrosAreRefused(t *testing.T) {
+	for _, method := range []string{"host.get", "template.get", "hostprototype.get"} {
+		got := ClassifyCall(method, map[string]any{"output": "extend", "selectMacros": "extend"})
+		if got.Allowed {
+			t.Errorf("%s with selectMacros must be refused", method)
+		}
+		if !strings.Contains(got.Reason, "macro values") {
+			t.Errorf("%s: reason = %q", method, got.Reason)
+		}
+		if plain := ClassifyCall(method, map[string]any{"output": "extend"}); !plain.Allowed {
+			t.Errorf("%s without selectMacros must stay allowed: %s", method, plain.Reason)
+		}
+	}
+}
