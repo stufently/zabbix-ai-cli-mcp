@@ -38,6 +38,16 @@ type Maintenance struct {
 	EndsIn string        `json:"ends_in,omitempty"`
 	Hosts  []ProblemHost `json:"hosts,omitempty"`
 	Groups []string      `json:"groups,omitempty"`
+
+	// periods are the window's time periods as Zabbix stores them. They are
+	// not part of the projection, but a change that rewrites them has to know
+	// what it is replacing.
+	periods []maintenancePeriod
+}
+
+type maintenancePeriod struct {
+	Type      string
+	StartDate string
 }
 
 type wireMaintenance struct {
@@ -130,6 +140,9 @@ func (w wireMaintenance) toMaintenance(now time.Time) Maintenance {
 	}
 	for _, g := range w.HostGroups {
 		m.Groups = append(m.Groups, output.Sanitise(g.Name))
+	}
+	for _, tp := range w.TimePeriods {
+		m.periods = append(m.periods, maintenancePeriod{Type: tp.TimePeriodType, StartDate: tp.StartDate})
 	}
 	return m
 }
@@ -292,9 +305,40 @@ func (s *Service) expandHostPatterns(ctx context.Context, patterns []string) ([]
 		if p == "" {
 			continue
 		}
+		// The same exact-name rule as host groups: "dx1" names a host, and
+		// silently widening it into dx10..dx19 would stop alerting on machines
+		// nobody asked about. A wildcard says the widening is intended.
+		if !strings.Contains(p, "*") {
+			exact, err := s.exactHosts(ctx, p)
+			if err != nil {
+				return nil, err
+			}
+			if len(exact) > 0 {
+				for _, h := range exact {
+					if !seen[h.ID] {
+						seen[h.ID] = true
+						out = append(out, h)
+					}
+				}
+				continue
+			}
+		}
 		hosts, truncated, err := s.ListHosts(ctx, HostQuery{Search: p, Limit: 500})
 		if err != nil {
 			return nil, err
+		}
+		if !strings.Contains(p, "*") {
+			// Zabbix's filter is case-sensitive; an exact name typed in another
+			// case is found here instead.
+			var folded []Host
+			for _, h := range hosts {
+				if exactMatch(h, p) {
+					folded = append(folded, h)
+				}
+			}
+			if len(folded) > 0 {
+				hosts, truncated = folded, false
+			}
 		}
 		if truncated {
 			return nil, errs.Usage("pattern %q matches more than 500 hosts; narrow it", p)
@@ -307,6 +351,31 @@ func (s *Service) expandHostPatterns(ctx context.Context, patterns []string) ([]
 			if !seen[h.ID] {
 				seen[h.ID] = true
 				out = append(out, namedID{ID: h.ID, Name: h.Name})
+			}
+		}
+	}
+	return out, nil
+}
+
+// exactHosts looks a name up as an exact technical or visible host name. It
+// runs as its own query, like resolveHostGroups, because the substring search
+// is capped and an exactly named host could fall outside its window.
+func (s *Service) exactHosts(ctx context.Context, name string) ([]namedID, error) {
+	var out []namedID
+	seen := map[string]bool{}
+	for _, field := range []string{"host", "name"} {
+		var wire []wireHost
+		params := map[string]any{
+			"output": []string{"hostid", "host", "name"},
+			"filter": map[string]any{field: name},
+		}
+		if err := s.client.CallIdempotent(ctx, "host.get", params, &wire); err != nil {
+			return nil, errs.FromAPI(err)
+		}
+		for _, w := range wire {
+			if !seen[w.HostID] {
+				seen[w.HostID] = true
+				out = append(out, namedID{ID: w.HostID, Name: output.Sanitise(w.Name)})
 			}
 		}
 	}
@@ -357,6 +426,21 @@ func (s *Service) PlanMaintenanceExtend(ctx context.Context, profile, id string,
 	since, err := time.Parse(time.RFC3339, m.ActiveSince)
 	if err != nil {
 		return nil, errs.Internal("maintenance %s has an unreadable start time", id)
+	}
+	// The update replaces every time period with one continuous period. For a
+	// recurring window (daily, weekly, monthly) that would turn a two-hour
+	// weekly slot into months of unbroken suppression, so only a window that
+	// already is one one-time period is extended here.
+	if len(m.periods) > 1 || (len(m.periods) == 1 && m.periods[0].Type != "0") {
+		return nil, errs.Usage("maintenance %q has a recurring or multi-period schedule; extending it here would replace that schedule with one continuous window", m.Name).
+			WithSuggestion("change its schedule in the Zabbix frontend, or create a separate window with 'zabbix-ai-cli-mcp maintenance create'")
+	}
+	// A one-time period may start later than the active window does; it is
+	// the period, not the window, that decides when alerts stop.
+	if len(m.periods) == 1 {
+		if start := unixToTime(m.periods[0].StartDate); !start.IsZero() {
+			since = start
+		}
 	}
 	period := int64(newTill.Sub(since).Seconds())
 	if time.Duration(period)*time.Second > maxMaintenancePeriod {
