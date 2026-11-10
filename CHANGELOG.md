@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-11-10
+
+### Fixed
+
+- Closing a problem through `event.acknowledge` is classified as destructive
+  from the action mask the plan sends (close bit set), not from the registry
+  entry, and its approval needs the single event ID named back. Other event
+  updates stay ordinary writes.
+- `maintenance create` matches a host name without `*` exactly (technical or
+  visible name, case-insensitive) before falling back to the substring search,
+  so `dx1` no longer silently covers `dx10`..`dx19`.
+- `maintenance extend` refuses a recurring or multi-period window instead of
+  replacing its schedule with one continuous period, and a one-time period
+  that starts after the window counts from the period's start.
+- Raw `*.get` reads with `selectMacros` (`host.get`, `template.get`, …) are
+  refused like `usermacro.get`, since they return the same macro values. Plan
+  preconditions are checked with the same params-aware rule.
+
 ### Changed
 
 - Build toolchain pins moved from Go 1.27.2 to 1.27.3 (Dockerfile, Makefile,
